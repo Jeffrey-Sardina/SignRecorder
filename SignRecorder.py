@@ -1,7 +1,5 @@
 import cv2
-import numpy
 import tkinter as tk
-from PIL import Image, ImageTk
 import threading
 
 #recording
