@@ -7,39 +7,42 @@ import threading
 #recording
 window = None
 recording = False
+just_started = True
 
 #ui
 record_button = None
 next_button = None
+controls_button = None
+about_button = None
+credits_button = None
 data_label = None
+pop_up_window = None
 
 #exp data
 subjects = []
 records_since_last_next = 0
 current_subject = 0
 
-class Subject():
-    name = 'un-named'
-    signs = []
-    current_sign = -1
+#text
+controls_text = '''
+Press space to start / stop recording
+Press enter to go the the next sign / subject
+Press escape to quit
+'''
 
-    def __init__(self, s_name, s_signs):
-        self.name = s_name
-        self.signs = s_signs
+credits_text = '''
+Project developed by Jeffrey Sardina 
+Github: https://github.com/Jeffrey-Sardina
+'''
 
-    def next_sign(self):
-        self.current_sign += 1
-        if self.current_sign < len(self.signs):
-            sign = self.signs[self.current_sign].strip()
-            return sign
-        else:
-            return None
-
-    def current_sign_value(self):
-        if self.current_sign < len(self.signs):
-            return self.signs[self.current_sign].strip()
-        else:
-            return 'None'
+about_text = '''
+Version 0.0
+This is a simple program for recording and saving 
+video .avi files for sign language data collection
+ / experiments. It is currently hosted on GitHub
+ (https://github.com/Jeffrey-Sardina/SignRecorder)
+ as an open-source project.
+'''
 
 def main():
     load_data()
@@ -56,17 +59,16 @@ def load_data():
 def init_gui():
     global opencv_image_label, window, record_button, data_label
     #Set up GUI
+    backcolor = '#444444'
     window = tk.Tk()
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
     window.wm_title('Sign Recorder')
-    window.config(background='#444444')
+    window.config(background=backcolor)
 
     #input
     window.bind_all('<KeyRelease>', on_key_release)
 
     #Graphics window
-    opencv_image_frame = tk.Frame(window, width=screen_width, height=screen_height)
+    opencv_image_frame = tk.Frame(window)
     opencv_image_frame.grid(row=0, column=0, padx=10, pady=2)
 
     #Capture video frames
@@ -78,7 +80,7 @@ def init_gui():
     color = '#777777'
 
     #Label
-    data_label = tk.Label(window, text = 'Press Next to get started', font = (None, 20), height = 3, width = 30, background = color)
+    data_label = tk.Label(window, text = 'Press Record or Next to get started', font = (None, 20), height = 3, width = 30, background = color)
     data_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
     #Buttons
@@ -88,8 +90,23 @@ def init_gui():
     next_button = tk.Button(window, text ="Next", command = on_button_next, font = (None, 15), height = 3, width = 30, background = color)
     next_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
+    blank_label = tk.Label(window, text = '', font = (None, 20), height = 1, width = 30, background = backcolor)
+    blank_label.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+
+    controls_button = tk.Button(window, text ="Controls", command = on_button_controls, font = (None, 15), height = 1, width = 30, background = color)
+    controls_button.grid(row=5, column=0, padx=padding_x, pady=padding_y)
+
+    about_button = tk.Button(window, text ="About", command = on_button_about, font = (None, 15), height = 1, width = 30, background = color)
+    about_button.grid(row=6, column=0, padx=padding_x, pady=padding_y)
+
+    credits_button = tk.Button(window, text ="Credits", command = on_button_credits, font = (None, 15), height = 1, width = 30, background = color)
+    credits_button.grid(row=7, column=0, padx=padding_x, pady=padding_y)
+
+    blank_label2 = tk.Label(window, text = '', font = (None, 20), height = 1, width = 30, background = backcolor)
+    blank_label2.grid(row=8, column=0, padx=padding_x, pady=padding_y)
+
     exit_button = tk.Button(window, text ="Exit", command = on_button_exit, font = (None, 15), height = 3, width = 30, background = color)
-    exit_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+    exit_button.grid(row=9, column=0, padx=padding_x, pady=padding_y)
 
 def show_gui():
     window.mainloop()
@@ -101,6 +118,110 @@ def on_key_release(event):
         on_button_next()
     elif event.keysym == 'Escape':
         on_button_exit()
+
+def on_button_record():
+    global recording, records_since_last_next, just_started
+    if just_started:
+        just_started = False
+        on_button_next()
+    if recording:
+        recording = False
+        record_button.config(text = 'Record')
+    else:
+        recording = True
+        records_since_last_next += 1
+        record_button.config(text = 'Stop')
+        name = subjects[current_subject].name
+        sign = subjects[current_subject].current_sign_value()
+        data_label.config(text = name + '; ' + sign)
+        Recorder(name + ' ' + sign + '--Try' + str(records_since_last_next), 30, True).start()
+
+def on_button_next():
+    global records_since_last_next, just_started
+    records_since_last_next = 0
+    if just_started:
+        just_started = False
+    if recording:
+        on_button_record()
+    next_sign_or_subject()
+
+def next_sign_or_subject():
+    global current_subject, data_label
+    if not current_subject >= len(subjects):
+        subject = subjects[current_subject]
+        name = subject.name
+        sign = subject.next_sign()
+    else:
+        name = ''
+        sign = None
+        
+    if sign == None:
+        current_subject += 1
+        if current_subject >= len(subjects):
+            data_label.config(text = 'All data collected')
+        else:
+            name = subjects[current_subject].name
+            sign = subjects[current_subject].next_sign()
+            data_label.config(text = name + '; ' + sign)
+    else:
+        data_label.config(text = name + '; ' + sign)
+
+def on_button_exit():
+    global recording
+    if recording:
+        recording = False
+    exit()
+
+def on_button_controls():
+    global pop_up_window
+    try:
+        pop_up_window.destroy()
+    except: #already closed by user, or never opened
+        pass
+
+    color = '#777777'
+
+    pop_up_window = tk.Tk()
+    pop_up_window.wm_title('Controls')
+    pop_up_window.config(background=color)
+
+    text = tk.Label(pop_up_window, text = controls_text, justify='left', font = (None, 20), height = 5, width = 40, background = color)
+    text.grid(row=0, column=0, padx=10, pady=10)
+    pop_up_window.mainloop()
+
+def on_button_about():
+    global pop_up_window
+    try:
+        pop_up_window.destroy()
+    except: #already closed by user, or never opened
+        pass
+
+    color = '#777777'
+
+    pop_up_window = tk.Tk()
+    pop_up_window.wm_title('Controls')
+    pop_up_window.config(background=color)
+
+    text = tk.Label(pop_up_window, text = about_text, justify='left', font = (None, 20), height = 7, width = 40, background = color)
+    text.grid(row=0, column=0, padx=10, pady=10)
+    pop_up_window.mainloop()
+
+def on_button_credits():
+    global pop_up_window
+    try:
+        pop_up_window.destroy()
+    except: #already closed by user, or never opened
+        pass
+
+    color = '#777777'
+
+    pop_up_window = tk.Tk()
+    pop_up_window.wm_title('Controls')
+    pop_up_window.config(background=color)
+
+    text = tk.Label(pop_up_window, text = credits_text, justify='left', font = (None, 20), height = 5, width = 40, background = color)
+    text.grid(row=0, column=0, padx=10, pady=10)
+    pop_up_window.mainloop()
 
 class Recorder(threading.Thread):
     name = ''
@@ -157,49 +278,27 @@ class Recorder(threading.Thread):
         video_writer.release()
         cv2.destroyAllWindows()
 
-def on_button_record():
-    global recording, records_since_last_next
-    if recording:
-        recording = False
-        record_button.config(text = 'Record')
-    else:
-        recording = True
-        records_since_last_next += 1
-        record_button.config(text = 'Stop')
-        name = subjects[current_subject].name
-        sign = subjects[current_subject].current_sign_value()
-        data_label.config(text = name + '; ' + sign)
-        Recorder(name + ' ' + sign + '--Try' + str(records_since_last_next), 30, True).start()
+class Subject():
+    name = 'un-named'
+    signs = []
+    current_sign = -1
 
-def on_button_next():
-    global records_since_last_next
-    records_since_last_next = 0
-    if recording:
-        on_button_record()
-    next_sign_or_subject()
+    def __init__(self, s_name, s_signs):
+        self.name = s_name
+        self.signs = s_signs
 
-def next_sign_or_subject():
-    global current_subject, data_label
-    if not current_subject >= len(subjects):
-        subject = subjects[current_subject]
-        name = subject.name
-        sign = subject.next_sign()
-    else:
-        name = ''
-        sign = None
-        
-    if sign == None:
-        current_subject += 1
-        if current_subject >= len(subjects):
-            data_label.config(text = 'All data collected')
+    def next_sign(self):
+        self.current_sign += 1
+        if self.current_sign < len(self.signs):
+            sign = self.signs[self.current_sign].strip()
+            return sign
         else:
-            name = subjects[current_subject].name
-            sign = subjects[current_subject].next_sign()
-            data_label.config(text = name + '; ' + sign)
-    else:
-        data_label.config(text = name + '; ' + sign)
+            return None
 
-def on_button_exit():
-    exit()
+    def current_sign_value(self):
+        if self.current_sign < len(self.signs):
+            return self.signs[self.current_sign].strip()
+        else:
+            return 'None'
 
 main()
