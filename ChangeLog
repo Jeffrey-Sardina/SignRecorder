@@ -1,0 +1,10 @@
+v. 0.0 to 0.1
+    User-side:
+        Edited the About tab to contain all the data that used to be in "Credits"
+        Expanded the UI view for the About tab and reduced it for the Controls tab
+        Edited Controls descriptions to be more concise
+
+    Dev-side:
+        Removed old, unused code and variables
+        Added a few comments
+        Replaced calls to exit() with calls to sys.exit() for compatibility with older Python 3.x versions

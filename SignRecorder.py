@@ -1,13 +1,14 @@
 import cv2
 import tkinter as tk
 import threading
+import sys
 
 #recording
 window = None
 recording = False
 just_started = True
 
-#ui
+#tk ui
 record_button = None
 next_button = None
 controls_button = None
@@ -23,23 +24,20 @@ current_subject = 0
 
 #text
 controls_text = '''
-Press space to start / stop recording
-Press enter to go the the next sign / subject
-Press escape to quit
-'''
-
-credits_text = '''
-Project developed by Jeffrey Sardina 
-Github: https://github.com/Jeffrey-Sardina
+Space: start / stop recording
+Enter: next sign / subject
+Escape: quit
 '''
 
 about_text = '''
-Version 0.0
-This is a simple program for recording and saving 
-video .avi files for sign language data collection
- / experiments. It is currently hosted on GitHub
- (https://github.com/Jeffrey-Sardina/SignRecorder)
- as an open-source project.
+Version: 0.1
+Developer: Jeffrey Sardina 
+
+SignRecorder is a simple program for recording and saving 
+video '.avi' files for sign language data collection and
+experiments. It is currently hosted on GitHub
+(https://github.com/Jeffrey-Sardina/SignRecorder)
+as an open-source project.
 '''
 
 def main():
@@ -55,27 +53,20 @@ def load_data():
             subjects.append(Subject(name, signs))
 
 def init_gui():
-    global opencv_image_label, window, record_button, data_label
-    #Set up GUI
+    global window, record_button, data_label
+    #layout / theming data
+    padding_x = 10
+    padding_y = 5
     backcolor = '#444444'
+    color = '#777777'
+
+    #Set up GUI
     window = tk.Tk()
     window.wm_title('Sign Recorder')
     window.config(background=backcolor)
 
     #input
     window.bind_all('<KeyRelease>', on_key_release)
-
-    #Graphics window
-    opencv_image_frame = tk.Frame(window)
-    opencv_image_frame.grid(row=0, column=0, padx=10, pady=2)
-
-    #Capture video frames
-    opencv_image_label = tk.Label(opencv_image_frame)
-    opencv_image_label.grid(row=0, column=0)
-
-    padding_x = 10
-    padding_y = 5
-    color = '#777777'
 
     #Label
     data_label = tk.Label(window, text = 'Press Record or Next to get started', font = (None, 20), height = 3, width = 30, background = color)
@@ -97,14 +88,11 @@ def init_gui():
     about_button = tk.Button(window, text ="About", command = on_button_about, font = (None, 15), height = 1, width = 30, background = color)
     about_button.grid(row=6, column=0, padx=padding_x, pady=padding_y)
 
-    credits_button = tk.Button(window, text ="Credits", command = on_button_credits, font = (None, 15), height = 1, width = 30, background = color)
-    credits_button.grid(row=7, column=0, padx=padding_x, pady=padding_y)
-
     blank_label2 = tk.Label(window, text = '', font = (None, 20), height = 1, width = 30, background = backcolor)
-    blank_label2.grid(row=8, column=0, padx=padding_x, pady=padding_y)
+    blank_label2.grid(row=7, column=0, padx=padding_x, pady=padding_y)
 
     exit_button = tk.Button(window, text ="Exit", command = on_button_exit, font = (None, 15), height = 3, width = 30, background = color)
-    exit_button.grid(row=9, column=0, padx=padding_x, pady=padding_y)
+    exit_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
 
 def show_gui():
     window.mainloop()
@@ -168,7 +156,7 @@ def on_button_exit():
     global recording
     if recording:
         recording = False
-    exit()
+    sys.exit()
 
 def on_button_controls():
     global pop_up_window
@@ -183,7 +171,7 @@ def on_button_controls():
     pop_up_window.wm_title('Controls')
     pop_up_window.config(background=color)
 
-    text = tk.Label(pop_up_window, text = controls_text, justify='left', font = (None, 20), height = 5, width = 40, background = color)
+    text = tk.Label(pop_up_window, text = controls_text, justify='left', font = (None, 20), height = 5, width = 30, background = color)
     text.grid(row=0, column=0, padx=10, pady=10)
     pop_up_window.mainloop()
 
@@ -200,24 +188,7 @@ def on_button_about():
     pop_up_window.wm_title('Controls')
     pop_up_window.config(background=color)
 
-    text = tk.Label(pop_up_window, text = about_text, justify='left', font = (None, 20), height = 7, width = 40, background = color)
-    text.grid(row=0, column=0, padx=10, pady=10)
-    pop_up_window.mainloop()
-
-def on_button_credits():
-    global pop_up_window
-    try:
-        pop_up_window.destroy()
-    except: #already closed by user, or never opened
-        pass
-
-    color = '#777777'
-
-    pop_up_window = tk.Tk()
-    pop_up_window.wm_title('Controls')
-    pop_up_window.config(background=color)
-
-    text = tk.Label(pop_up_window, text = credits_text, justify='left', font = (None, 20), height = 5, width = 40, background = color)
+    text = tk.Label(pop_up_window, text = about_text, justify='left', font = (None, 20), height = 8, width = 50, background = color)
     text.grid(row=0, column=0, padx=10, pady=10)
     pop_up_window.mainloop()
 
