@@ -52,7 +52,8 @@ def load_data():
                 name, sign_string = line.split(':')
                 signs = sign_string.split(',')
                 subjects.append(Subject(name, signs))
-    subjects.append(Subject('no subject data found', 'no stimulus data found'))
+    except:
+        subjects.append(Subject('No data found', ' '))
 
 def init_gui():
     global window, record_button, data_label
