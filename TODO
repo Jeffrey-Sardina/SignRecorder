@@ -1,9 +1,22 @@
 Important
     Add overwrite warnings!
     Dynamic file loading
-    Back button
+    Allow display of various stimuli:
+        videos
+        images
+        text
+    Time recording
+        Start once stimulus has been completely shown (eg. after video)
+        Stop on button release
+        Before this comes a stimulus of fixed and known length; after comes the video this records; thus total time is known (but I do not need that)
+    Write to <video_name>.meta files containing video data such as timing (see above)
+    Allow merging of videos
 
-Long-term / potential
-    Dynamic changing naming conventions
+Qi
+    Alter experimental organization--talk to Qi
+    Update naming conventions
+
+Long-term / potential (ask Qi)
     Create / edit experiments from within the program
     Output other file formats by user choice
+    Connect to ELAN API? (Does it even have one I can use?)
