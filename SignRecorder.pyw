@@ -2,6 +2,15 @@ import cv2
 import tkinter as tk
 import threading
 import sys
+import logging
+import os
+
+#backend
+logger = None
+settings = None
+
+#data
+webcam_num = 0
 
 #recording
 window = None
@@ -41,9 +50,36 @@ as an open-source project.
 '''
 
 def main():
+    init_logging()
+    find_webcams(10)
+    init_config()
     load_data()
     init_gui()
     show_gui()
+
+def init_logging():
+    global logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler('SignRecorder.log', mode='w')
+    logger.addHandler(file_handler)
+    file_handler_format = logging.Formatter('%(levelname)s - %(asctime)s - %(message)s')
+    file_handler.setFormatter(file_handler_format)
+    logger.info('Starting log')
+
+def find_webcams(search_num):
+    global webcam_num
+    for i in range(search_num):
+        webcam_i = cv2.VideoCapture(i)
+        if webcam_i.isOpened():
+            webcam_num += 1
+            webcam_i.release()
+    if webcam_num == 0:
+        logger.critical('No cameras found for recording!')
+
+def init_config():
+    global settings
+    settings = Settings()
 
 def load_data():
     try:
@@ -52,7 +88,8 @@ def load_data():
                 name, sign_string = line.split(':')
                 signs = sign_string.split(',')
                 subjects.append(Subject(name, signs))
-    except:
+    except Exception as err:
+        logger.warning('No experiment data found: ' + str(err))
         subjects.append(Subject('No data found', ' '))
 
 def init_gui():
@@ -99,6 +136,14 @@ def init_gui():
 
 def show_gui():
     window.mainloop()
+
+def on_key_down(event):
+    if event.keysym == 'space':
+        pass
+    elif event.keysym == 'Return':
+        pass
+    elif event.keysym == 'Escape':
+        pass
 
 def on_key_release(event):
     if event.keysym == 'space':
@@ -195,6 +240,28 @@ def on_button_about():
     text.grid(row=0, column=0, padx=10, pady=10)
     pop_up_window.mainloop()
 
+class Settings():
+    cam_num = 0
+    display_cam_feed = False
+    allow_override = False
+
+    def __init__(self):
+        self.load_config()
+
+    def load_config(self):
+        try:
+            with open('config.csv', 'r') as config:
+                for line in config:
+                    key, value = line.split(',', 1)
+                    if key == 'cam_num':
+                        self.cam_num = int(value)
+                    if key == 'display_cam_feed':
+                        self.display_cam_feed = int(value) == 1
+                    if key == 'allow_override':
+                        self.allow_override = int(value) == 1
+        except Exception as err:
+            logger.error('Settings.load_config: could not read config file: ' + str(err))
+
 class Recorder(threading.Thread):
     name = ''
     fps = 0
@@ -216,9 +283,16 @@ class Recorder(threading.Thread):
         width = int(web_cam.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(web_cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
-        # Define the codec and create VideoWriter object
+        # Define the codec and 
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
-        video_writer= cv2.VideoWriter(self.name + '.avi', fourcc, self.fps, (width, height))
+
+        #create VideoWriter object
+        file_name = self.name + '.avi'
+        if os.path.exists(file_name) and not settings.allow_override:
+            logger.critical('Cannot overwrite existing video file: ' + file_name)
+            raise Exception('Cannot overwrite existing video file: ' + file_name)
+        else:            
+            video_writer= cv2.VideoWriter(self.name + '.avi', fourcc, self.fps, (width, height))
     
         while web_cam.isOpened():
     

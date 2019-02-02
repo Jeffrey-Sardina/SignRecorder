@@ -1,5 +1,5 @@
 Important
-    Add overwrite warnings!
+    Expose overwrite warnings!
     Dynamic file loading
     Allow display of various stimuli:
         videos
@@ -11,6 +11,7 @@ Important
         Before this comes a stimulus of fixed and known length; after comes the video this records; thus total time is known (but I do not need that)
     Write to <video_name>.meta files containing video data such as timing (see above)
     Allow merging of videos
+    Allow search for more webcams after Start
 
 Qi
     Alter experimental organization--talk to Qi
