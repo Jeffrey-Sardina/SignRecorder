@@ -1,5 +1,6 @@
 import cv2
 import tkinter as tk
+from tkinter import filedialog
 import threading
 import sys
 import logging
@@ -122,63 +123,6 @@ def init_gui():
     
     window.mainloop()
 
-
-    '''
-    global window, record_button, data_label
-    #layout / theming data
-    padding_x = 10
-    padding_y = 5
-    backcolor = '#444444'
-    color = '#777777'
-
-    #Set up GUI
-    window = tk.Tk()
-    window.wm_title('Sign Recorder')
-    width = window.winfo_screenwidth()
-    height = window.winfo_screenheight()
-    window.geometry("%dx%d+0+0" % (width, height))
-    window.config(background=backcolor)
-
-    #input
-    window.bind_all('<KeyRelease>', on_key_release)
-
-    #Label
-    data_label = tk.Label(window, text = 'Main Menu', font = default_font, height = 3, width = 30, background = color)
-    data_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
-
-    #Buttons
-    create_experiment_button = tk.Button(window, text ="Create Experiment", command = on_button_create_experimment(), font = default_font, height = 3, width = 30, background = color)
-    create_experiment_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
-
-    start_experiment_button = tk.Button(window, text ="Start Experiment", command = on_button_start_experimment(), font = default_font, height = 3, width = 30, background = color)
-    start_experiment_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
-
-    exit_button = tk.Button(window, text ="Exit", command = on_button_exit, font = default_font, height = 3, width = 30, background = color)
-    exit_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
-
-    ''''''
-    record_button = tk.Button(window, text ="Record", command = on_button_record, font = (None, 15), height = 3, width = 30, background = color)
-    record_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
-
-    next_button = tk.Button(window, text ="Next", command = on_button_next, font = (None, 15), height = 3, width = 30, background = color)
-    next_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
-
-    blank_label = tk.Label(window, text = '', font = (None, 20), height = 1, width = 30, background = backcolor)
-    blank_label.grid(row=4, column=0, padx=padding_x, pady=padding_y)
-
-    controls_button = tk.Button(window, text ="Controls", command = on_button_controls, font = (None, 15), height = 1, width = 30, background = color)
-    controls_button.grid(row=5, column=0, padx=padding_x, pady=padding_y)
-
-    about_button = tk.Button(window, text ="About", command = on_button_about, font = (None, 15), height = 1, width = 30, background = color)
-    about_button.grid(row=6, column=0, padx=padding_x, pady=padding_y)
-
-    blank_label2 = tk.Label(window, text = '', font = (None, 20), height = 1, width = 30, background = backcolor)
-    blank_label2.grid(row=7, column=0, padx=padding_x, pady=padding_y)
-
-    exit_button = tk.Button(window, text ="Exit", command = on_button_exit, font = (None, 15), height = 3, width = 30, background = color)
-    exit_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
-    '''
-
 def on_key_down(event):
     if event.keysym == 'space':
         pass
@@ -194,12 +138,6 @@ def on_key_release(event):
         on_button_next()
     elif event.keysym == 'Escape':
         on_button_exit()
-
-def on_button_create_experimment():
-    pass
-
-def on_button_start_experimment():
-    pass
 
 def on_button_record():
     global recording, records_since_last_next, just_started
@@ -253,40 +191,6 @@ def on_button_exit():
     if recording:
         recording = False
     sys.exit()
-
-def on_button_controls():
-    global pop_up_window
-    try:
-        pop_up_window.destroy()
-    except: #already closed by user, or never opened
-        pass
-
-    color = '#777777'
-
-    pop_up_window = tk.Tk()
-    pop_up_window.wm_title('Controls')
-    pop_up_window.config(background=color)
-
-    text = tk.Label(pop_up_window, text = controls_text, justify='left', font = (None, 20), height = 5, width = 30, background = color)
-    text.grid(row=0, column=0, padx=10, pady=10)
-    pop_up_window.mainloop()
-
-def on_button_about():
-    global pop_up_window
-    try:
-        pop_up_window.destroy()
-    except: #already closed by user, or never opened
-        pass
-
-    color = '#777777'
-
-    pop_up_window = tk.Tk()
-    pop_up_window.wm_title('Controls')
-    pop_up_window.config(background=color)
-
-    text = tk.Label(pop_up_window, text = about_text, justify='left', font = (None, 20), height = 8, width = 50, background = color)
-    text.grid(row=0, column=0, padx=10, pady=10)
-    pop_up_window.mainloop()
 
 class Settings():
     cam_num = 0
@@ -488,11 +392,70 @@ class Page_Main_Menu(Page):
         label.pack(side="top")
 
 class Page_Create_Experiment(Page):
+    files = []
+    option_selected = None
+    entry = None
+
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
         self.config(background = backcolor)
-        label = tk.Label(self, text="Seo é an dara leathnach", background = backcolor, foreground = forecolor)
-        label.pack(side="top")
+        self.init_elements()
+        
+    def init_elements(self):
+        padding_x = 10
+        padding_y = 10
+
+        stimulus_label = tk.Label(self, text = 'Select Stimulus Type', font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        stimulus_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+
+        options = ['Video', 'Image', 'Text']
+        default_option = options[0]
+        self.option_selected = tk.StringVar(self)
+        option_menu = tk.OptionMenu(self, self.option_selected, *options)
+        self.option_selected.set(default_option)
+        option_menu.config(background = ui_element_color, foreground = forecolor)
+        option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+
+        name_label = tk.Label(self, text = 'Enter the name of the experiment', font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        name_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        self.entry = tk.StringVar(self)
+        name_entry = tk.Entry(self, textvariable = self.entry)
+        name_entry.focus_set()
+        name_entry.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+
+        file_text = '''
+        Please Select the files to use for stimuli. These will be used during the experiment.
+        --For videos or images, select the video or image files from your computer.
+        --For text stimuli, select a plaintext file contianing each stimulus on a separate line.
+        '''
+        file_label = tk.Label(self, text = file_text, font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        file_label.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+
+        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        select_files_button.grid(row=5, column=0, padx=padding_x, pady=padding_y)
+
+        file_label = tk.Label(self, text = 'Once you are done, press create experiment!', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        file_label.grid(row=6, column=0, padx=padding_x, pady=padding_y)
+
+        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        select_files_button.grid(row=7, column=0, padx=padding_x, pady=padding_y)
+
+    def load_files(self):
+        self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select ' + self.option_selected.get() + ' files')
+
+    def create_experiment(self):
+        experimant_name = self.entry.get() + '.exp'
+        if os.path.exists(experimant_name) and not settings.allow_override:
+            logger.critical('File already exists and cannot be overwritten due to config specifications')
+        try:
+            with open(experimant_name, 'w') as experiment:
+                print('name,' + self.entry.get(), file=experiment)
+                print('type,' + self.option_selected.get(), file=experiment)
+                for exp_file in self.files:
+                    print(exp_file, file=experiment)
+        except:
+            pass
 
 class Page_Start_Experiment(Page):
     def __init__(self, *args, **kwargs):
