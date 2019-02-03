@@ -453,11 +453,15 @@ class Page_Create_Experiment(Page):
                 print('name,' + self.entry.get(), file=experiment)
                 print('type,' + self.option_selected.get(), file=experiment)
                 for exp_file in self.files:
-                    print(exp_file, file=experiment)
+                    print('file,' + exp_file, file=experiment)
         except:
             pass
 
 class Page_Start_Experiment(Page):
+    name = ''
+    files = []
+    type = ''
+
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
         self.config(background = backcolor)
@@ -468,19 +472,33 @@ class Page_Start_Experiment(Page):
         padding_x = 10
         padding_y = 10
 
-        #Label
-        data_label = tk.Label(self, text = 'Main Menu', font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        data_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        file_label = tk.Label(self, text = 'Select and experiment ile to load', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        file_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+
+        select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        select_file_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
         #Buttons
-        record_button = tk.Button(self, text ="Record", command = on_button_record, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        record_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+        record_button = tk.Button(self, text ="Record", command = on_button_record, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        record_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
-        next_button = tk.Button(self, text ="Next", command = on_button_next, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        next_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        next_button = tk.Button(self, text ="Next", command = on_button_next, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        next_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
-        exit_button = tk.Button(self, text ="Exit", command = on_button_exit, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        exit_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
+    def load_experiment(self):
+        experiment_file = filedialog.askopenfilename(parent=self, initialdir="/", title='Select Experiment')
+        try:
+            with open(experiment_file, 'r') as experiment:
+                for line in experiment:
+                    key, value = line.strip().split(',')
+                    if key == 'name':
+                        self.name = value.strip()
+                    if key == 'type':
+                        self.type = value.strip()
+                    if key == 'file':
+                        self.files.append(value.strip())
+        except:
+            pass
 
 class MainFrame(tk.Frame):
     def __init__(self, *args, **kwargs):
