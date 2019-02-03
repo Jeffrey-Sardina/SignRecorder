@@ -478,12 +478,14 @@ class Page_Start_Experiment(Page):
         select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        #Buttons
+        file_label = tk.Label(self, text = 'Press Next to get started!', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        file_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
         record_button = tk.Button(self, text ="Record", command = on_button_record, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        record_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        record_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
         next_button = tk.Button(self, text ="Next", command = on_button_next, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        next_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+        next_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
     def load_experiment(self):
         experiment_file = filedialog.askopenfilename(parent=self, initialdir="/", title='Select Experiment')
@@ -501,14 +503,18 @@ class Page_Start_Experiment(Page):
             pass
 
 class MainFrame(tk.Frame):
+    page_main_menu =  None
+    page_create_experiment = None
+    page_start_experiment = None
+
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.config(background = backcolor)
 
         #Pages
-        page_main_menu = Page_Main_Menu(self)
-        page_create_experiment = Page_Create_Experiment(self)
-        page_start_experiment = Page_Start_Experiment(self)
+        self.page_main_menu = Page_Main_Menu(self)
+        self.page_create_experiment = Page_Create_Experiment(self)
+        self.page_start_experiment = Page_Start_Experiment(self)
 
         #Page Navigation
         buttonframe = tk.Frame(self, background = backcolor)
@@ -517,14 +523,14 @@ class MainFrame(tk.Frame):
         container.pack(side="top", fill="both", expand=True)
 
         #Place pages in the container frame
-        page_main_menu.place(in_=container)
-        page_create_experiment.place(in_=container)
-        page_start_experiment.place(in_=container)
+        self.page_main_menu.place(in_=container)
+        self.page_create_experiment.place(in_=container)
+        self.page_start_experiment.place(in_=container)
 
         #Place buttons in the top-level button frame
-        b1 = tk.Button(buttonframe, text="Main Menu", font=default_font, command=page_main_menu.lift, background = ui_element_color, foreground = forecolor)
-        b2 = tk.Button(buttonframe, text="Create Experiment", font=default_font, command=page_create_experiment.lift, background = ui_element_color, foreground = forecolor)
-        b3 = tk.Button(buttonframe, text="Start Experiment", font=default_font, command=page_start_experiment.lift, background = ui_element_color, foreground = forecolor)
+        b1 = tk.Button(buttonframe, text="Main Menu", font=default_font, command=self.select_main_menu, background = ui_element_color, foreground = forecolor)
+        b2 = tk.Button(buttonframe, text="Create Experiment", font=default_font, command=self.select_create_experiment, background = ui_element_color, foreground = forecolor)
+        b3 = tk.Button(buttonframe, text="Start Experiment", font=default_font, command=self.select_start_experiment, background = ui_element_color, foreground = forecolor)
 
         #Pack buttons
         b1.pack(side="left")
@@ -532,6 +538,16 @@ class MainFrame(tk.Frame):
         b3.pack(side="left")
 
         #Show the main menu
-        page_main_menu.show()
+        self.page_main_menu.show()
+
+    def select_main_menu(self):
+        self.page_main_menu.lift()
+
+    def select_create_experiment(self):
+        self.page_create_experiment.lift()
+
+    def select_start_experiment(self):
+        self.page_start_experiment.lift()
+
 
 main()

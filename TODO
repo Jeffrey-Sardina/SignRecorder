@@ -2,11 +2,6 @@ Important
     Expose overwrite warnings!
     waitKey stuff
 General
-    Dynamic file loading
-    Allow display of various stimuli:
-        videos
-        images
-        text
     Time recording
         Start once stimulus has been completely shown (eg. after video)
         Stop on button release
