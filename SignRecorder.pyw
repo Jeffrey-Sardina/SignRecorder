@@ -399,7 +399,7 @@ class Subject():
     def current_stimulus_value(self):
         if self.current_stimulus < len(self.stimuli):
             stimulus_type = self.determine_stimulus_type(self.current_stimulus)
-            stimulus = format_stimulus_output(self.stimuli[self.current_stimulus].strip(), stimulus_type)
+            stimulus = self.format_stimulus_output(self.stimuli[self.current_stimulus].strip(), stimulus_type)
             return stimulus, stimulus_type
         else:
             return 'None', None
