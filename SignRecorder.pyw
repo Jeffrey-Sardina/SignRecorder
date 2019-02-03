@@ -4,6 +4,7 @@ import threading
 import sys
 import logging
 import os
+import imghdr
 
 #backend
 logger = None
@@ -34,7 +35,7 @@ current_subject = 0
 #text
 controls_text = '''
 Space: start / stop recording
-Enter: next sign / subject
+Enter: next stimulus / subject
 Escape: quit
 '''
 
@@ -43,7 +44,7 @@ Version: 0.1
 Developer: Jeffrey Sardina 
 
 SignRecorder is a simple program for recording and saving 
-video '.avi' files for sign language data collection and
+video '.avi' files for stimulus language data collection and
 experiments. It is currently hosted on GitHub
 (https://github.com/Jeffrey-Sardina/SignRecorder)
 as an open-source project.
@@ -55,6 +56,9 @@ def main():
     init_config()
     load_data()
     init_gui()
+    #Image_Displayer(os.path.abspath('test.jpg'), 1000).start()
+    #Image_Displayer(os.path.abspath('test2.jpg'), 1000).start()
+    #Video_Displayer(os.path.abspath('test.avi')).start()
     show_gui()
 
 def init_logging():
@@ -86,8 +90,8 @@ def load_data():
         with open('subjects.csv', 'r') as subject_data:
             for line in subject_data:
                 name, sign_string = line.split(':')
-                signs = sign_string.split(',')
-                subjects.append(Subject(name, signs))
+                stimuli = sign_string.split(',')
+                subjects.append(Subject(name, stimuli))
     except Exception as err:
         logger.warning('No experiment data found: ' + str(err))
         subjects.append(Subject('No data found', ' '))
@@ -166,9 +170,9 @@ def on_button_record():
         records_since_last_next += 1
         record_button.config(text = 'Stop')
         name = subjects[current_subject].name
-        sign = subjects[current_subject].current_sign_value()
-        data_label.config(text = name + '; ' + sign)
-        Recorder(name + ' ' + sign + '--Try' + str(records_since_last_next), 30, True).start()
+        stimulus, stimulus_type = subjects[current_subject].current_stimulus_value()
+        data_label.config(text = name + '; ' + stimulus)
+        Recorder(name + ' ' + stimulus + '--Try' + str(records_since_last_next), 30, True).start()
 
 def on_button_next():
     global records_since_last_next, just_started
@@ -177,28 +181,28 @@ def on_button_next():
         just_started = False
     if recording:
         on_button_record()
-    next_sign_or_subject()
+    next_stimulus_or_subject()
 
-def next_sign_or_subject():
+def next_stimulus_or_subject():
     global current_subject, data_label
     if not current_subject >= len(subjects):
         subject = subjects[current_subject]
         name = subject.name
-        sign = subject.next_sign()
+        stimulus, stimulus_type = subject.next_stimulus()
     else:
         name = ''
-        sign = None
+        stimulus = None
         
-    if sign == None:
+    if stimulus == None:
         current_subject += 1
         if current_subject >= len(subjects):
             data_label.config(text = 'All data collected')
         else:
             name = subjects[current_subject].name
-            sign = subjects[current_subject].next_sign()
-            data_label.config(text = name + '; ' + sign)
+            stimulus, stimulus_type = subjects[current_subject].next_stimulus()
+            data_label.config(text = name + '; ' + stimulus)
     else:
-        data_label.config(text = name + '; ' + sign)
+        data_label.config(text = name + '; ' + stimulus)
 
 def on_button_exit():
     global recording
@@ -277,8 +281,6 @@ class Recorder(threading.Thread):
         # Capturing video from webcam:
         web_cam = cv2.VideoCapture(0)
 
-        currentFrame = 0
-
         #get width and height of reading frame
         width = int(web_cam.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(web_cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -293,22 +295,25 @@ class Recorder(threading.Thread):
             raise Exception('Cannot overwrite existing video file: ' + file_name)
         else:            
             video_writer= cv2.VideoWriter(self.name + '.avi', fourcc, self.fps, (width, height))
+
+        if not web_cam.isOpened():
+            logger.warning('Recorder.run: Could not open webcam: ')
+            raise Exception('Recorder.run: Could not open webcam')
     
         while web_cam.isOpened():
-    
             # Capture frame-by-frame
             is_reading, frame = web_cam.read()
     
             if is_reading and recording:
                 if self.mirror:
-                    # Mirror the if needed
+                    # Mirror the video if needed
                     frame = cv2.flip(frame, 1)
 
                 # Saves for video
                 video_writer.write(frame)
     
                 # Display the resulting frame
-                cv2.imshow('frame', frame)
+                cv2.imshow(self.name, frame)
             else:
                 break
     
@@ -316,35 +321,102 @@ class Recorder(threading.Thread):
                 on_button_record()
                 break
     
-            # To stop duplicate images
-            currentFrame += 1
-    
         # When everything done, release the capture
         web_cam.release()
         video_writer.release()
-        cv2.destroyAllWindows()
+        cv2.destroyWindow(self.name)
+
+class Video_Displayer(threading.Thread):
+    file_name = ''
+    mirror = False
+
+    def __init__(self, file_name, mirror = False):
+        threading.Thread.__init__(self)
+        self.file_name = file_name
+        self.mirror = mirror
+
+    def run(self):
+        video_input = cv2.VideoCapture(self.file_name)
+        fps = int(video_input.get(cv2.CAP_PROP_FPS))
+        logger.info('Video ' + self.file_name + ' running at fps=' + str(int(fps)))
+
+        if not video_input.isOpened():
+            logger.warning('display_video: Could not open video file for reading: ')
+            raise Exception('display_video: Could not open video file for reading')
+        while video_input.isOpened():
+            #Get the next frame
+            is_reading, frame = video_input.read()
+
+            if is_reading:
+                if self.mirror:
+                    frame = cv2.flip(frame, 1)
+
+                #Display the resulting frame
+                cv2.imshow(self.file_name, frame)
+
+            #Have the key to exit be somehting noone will press
+            if cv2.waitKey(fps) & 0xFF == ord('¬'):
+                break
+        
+        video_input.release()
+        cv2.destroyWindow(self.file_name)
+
+class Image_Displayer(threading.Thread):
+    file_name = ''
+    mirror = False
+    time = 0
+
+    def __init__(self, file_name, time, mirror = False):
+        threading.Thread.__init__(self)
+        self.file_name = file_name
+        self.mirror = mirror
+        self.time = time
+
+    def run(self):
+        image = cv2.imread(self.file_name)
+        cv2.imshow(self.file_name, image)
+        if cv2.waitKey(self.time) & 0xFF == ord('¬'):
+            cv2.destroyAllWindows() # destroys the window showing image
+
 
 class Subject():
     name = 'un-named'
-    signs = []
-    current_sign = -1
+    stimuli = []
+    current_stimulus = -1
 
-    def __init__(self, s_name, s_signs):
-        self.name = s_name
-        self.signs = s_signs
+    def __init__(self, name, stimuli):
+        self.name = name
+        self.stimuli = stimuli
 
-    def next_sign(self):
-        self.current_sign += 1
-        if self.current_sign < len(self.signs):
-            sign = self.signs[self.current_sign].strip()
-            return sign
+    def next_stimulus(self):
+        self.current_stimulus += 1
+        if self.current_stimulus < len(self.stimuli):
+            stimulus = self.stimuli[self.current_stimulus].strip()
+            return stimulus, self.determine_stimulus_type(stimulus)
         else:
-            return None
+            return None, None
 
-    def current_sign_value(self):
-        if self.current_sign < len(self.signs):
-            return self.signs[self.current_sign].strip()
+    def current_stimulus_value(self):
+        if self.current_stimulus < len(self.stimuli):
+            stimulus_type = self.determine_stimulus_type(self.current_stimulus)
+            stimulus = format_stimulus_output(self.stimuli[self.current_stimulus].strip(), stimulus_type)
+            return stimulus, stimulus_type
         else:
-            return 'None'
+            return 'None', None
+
+    def determine_stimulus_type(self, stimulus):
+        is_file = os.path.isfile(stimulus)
+        if is_file:
+            img_type = imghdr.what(stimulus)
+            if img_type != None:
+                return 'i'
+            else:
+                return 'v'
+        return 't'
+
+    def format_stimulus_output(self, stimulus, stimulus_type):
+        if stimulus_type == 'i' or stimulus_type == 'v':
+            return os.path.abspath(stimulus)
+        return stimulus
 
 main()

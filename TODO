@@ -1,5 +1,7 @@
 Important
     Expose overwrite warnings!
+    waitKey stuff
+General
     Dynamic file loading
     Allow display of various stimuli:
         videos
@@ -10,14 +12,19 @@ Important
         Stop on button release
         Before this comes a stimulus of fixed and known length; after comes the video this records; thus total time is known (but I do not need that)
     Write to <video_name>.meta files containing video data such as timing (see above)
-    Allow merging of videos
     Allow search for more webcams after Start
+    Actually use all the data loaded from the config file.
 
-Lab
-    Alter experimental organization--talk to Lab
-    Update naming conventions
+Discussion
+    Experimental organization
+    Naming conventions
 
 Long-term / potential (ask lab)
     Create / edit experiments from within the program
     Output other file formats by user choice
     Connect to ELAN API? (Does it even have one I can use?)
+    Allow merging of videos
+    Config file recovery if deleted
+
+Timing
+    I want to be on v. 0.2 (with video, image, or text stimuli and .meta records of timing) by Monday, Feb. 11
