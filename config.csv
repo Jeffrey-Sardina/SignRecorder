@@ -1,3 +1,6 @@
 cam_num,2
 display_cam_feed,1
 allow_override,0
+backcolor,#000000
+forecolor,#ffffff
+ui_element_color,#555555

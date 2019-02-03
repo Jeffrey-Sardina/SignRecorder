@@ -20,10 +20,6 @@ just_started = True
 
 #tk ui
 record_button = None
-next_button = None
-controls_button = None
-about_button = None
-credits_button = None
 data_label = None
 pop_up_window = None
 
@@ -32,7 +28,13 @@ subjects = []
 records_since_last_next = 0
 current_subject = 0
 
+#Themeing
+backcolor = '#000000'
+ui_element_color = '#555555'
+forecolor = '#ffffff'
+
 #text
+default_font = 20
 controls_text = '''
 Space: start / stop recording
 Enter: next stimulus / subject
@@ -44,10 +46,17 @@ Version: 0.1
 Developer: Jeffrey Sardina 
 
 SignRecorder is a simple program for recording and saving 
-video '.avi' files for stimulus language data collection and
+video '.avi' files for sign language data collection and
 experiments. It is currently hosted on GitHub
 (https://github.com/Jeffrey-Sardina/SignRecorder)
 as an open-source project.
+'''
+
+into_text = '''
+To get started, click on either 'Create Experiemnt' or 
+'Start Experiment'. The program will guide you through
+loading stimuli and experimental methods. Once you have
+made an experiemnt, save it so that you can load it later.
 '''
 
 def main():
@@ -59,7 +68,6 @@ def main():
     #Image_Displayer(os.path.abspath('test.jpg'), 1000).start()
     #Image_Displayer(os.path.abspath('test2.jpg'), 1000).start()
     #Video_Displayer(os.path.abspath('test.avi')).start()
-    show_gui()
 
 def init_logging():
     global logger
@@ -97,6 +105,25 @@ def load_data():
         subjects.append(Subject('No data found', ' '))
 
 def init_gui():
+    #Master window
+    window = tk.Tk()
+    window.wm_title('Sign Recorder')
+    window.config(background = backcolor)
+    width = window.winfo_screenwidth()
+    height = window.winfo_screenheight()
+    window.geometry("%dx%d+0+0" % (width, height))
+
+    #Main Frame in window
+    main_frame = MainFrame(window, background = backcolor)
+    main_frame.pack(side="top", fill="both", expand=True)
+
+    #input
+    window.bind_all('<KeyRelease>', on_key_release)
+    
+    window.mainloop()
+
+
+    '''
     global window, record_button, data_label
     #layout / theming data
     padding_x = 10
@@ -107,16 +134,29 @@ def init_gui():
     #Set up GUI
     window = tk.Tk()
     window.wm_title('Sign Recorder')
+    width = window.winfo_screenwidth()
+    height = window.winfo_screenheight()
+    window.geometry("%dx%d+0+0" % (width, height))
     window.config(background=backcolor)
 
     #input
     window.bind_all('<KeyRelease>', on_key_release)
 
     #Label
-    data_label = tk.Label(window, text = 'Press Record or Next to get started', font = (None, 20), height = 3, width = 30, background = color)
+    data_label = tk.Label(window, text = 'Main Menu', font = default_font, height = 3, width = 30, background = color)
     data_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
     #Buttons
+    create_experiment_button = tk.Button(window, text ="Create Experiment", command = on_button_create_experimment(), font = default_font, height = 3, width = 30, background = color)
+    create_experiment_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+
+    start_experiment_button = tk.Button(window, text ="Start Experiment", command = on_button_start_experimment(), font = default_font, height = 3, width = 30, background = color)
+    start_experiment_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+    exit_button = tk.Button(window, text ="Exit", command = on_button_exit, font = default_font, height = 3, width = 30, background = color)
+    exit_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
+
+    ''''''
     record_button = tk.Button(window, text ="Record", command = on_button_record, font = (None, 15), height = 3, width = 30, background = color)
     record_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
@@ -137,9 +177,7 @@ def init_gui():
 
     exit_button = tk.Button(window, text ="Exit", command = on_button_exit, font = (None, 15), height = 3, width = 30, background = color)
     exit_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
-
-def show_gui():
-    window.mainloop()
+    '''
 
 def on_key_down(event):
     if event.keysym == 'space':
@@ -156,6 +194,12 @@ def on_key_release(event):
         on_button_next()
     elif event.keysym == 'Escape':
         on_button_exit()
+
+def on_button_create_experimment():
+    pass
+
+def on_button_start_experimment():
+    pass
 
 def on_button_record():
     global recording, records_since_last_next, just_started
@@ -253,6 +297,7 @@ class Settings():
         self.load_config()
 
     def load_config(self):
+        global ui_element_color, backcolor, forecolor
         try:
             with open('config.csv', 'r') as config:
                 for line in config:
@@ -263,6 +308,12 @@ class Settings():
                         self.display_cam_feed = int(value) == 1
                     if key == 'allow_override':
                         self.allow_override = int(value) == 1
+                    if key == 'backcolor':
+                        backcolor = value.strip()
+                    if key == 'forecolor':
+                        forecolor = value.strip()
+                    if key == 'ui_element_color':
+                        ui_element_color = value.strip()
         except Exception as err:
             logger.error('Settings.load_config: could not read config file: ' + str(err))
 
@@ -418,5 +469,88 @@ class Subject():
         if stimulus_type == 'i' or stimulus_type == 'v':
             return os.path.abspath(stimulus)
         return stimulus
+
+class Page(tk.Frame):
+    def __init__(self, *args, **kwargs):
+        tk.Frame.__init__(self, *args, **kwargs)
+        self.config(background = backcolor)
+    def show(self):
+        self.lift()
+
+class Page_Main_Menu(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.config(background = backcolor)
+        self.init_elements()
+
+    def init_elements(self):
+        label = tk.Label(self, text=about_text + '\n\n' + into_text, justify='left', font = default_font, background = backcolor, foreground = forecolor)
+        label.pack(side="top")
+
+class Page_Create_Experiment(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.config(background = backcolor)
+        label = tk.Label(self, text="Seo é an dara leathnach", background = backcolor, foreground = forecolor)
+        label.pack(side="top")
+
+class Page_Start_Experiment(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.config(background = backcolor)
+        self.init_elements()
+
+    def init_elements(self):
+        global record_button, data_label
+        padding_x = 10
+        padding_y = 10
+
+        #Label
+        data_label = tk.Label(self, text = 'Main Menu', font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        data_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+
+        #Buttons
+        record_button = tk.Button(self, text ="Record", command = on_button_record, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        record_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+
+        next_button = tk.Button(self, text ="Next", command = on_button_next, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        next_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        exit_button = tk.Button(self, text ="Exit", command = on_button_exit, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        exit_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
+
+class MainFrame(tk.Frame):
+    def __init__(self, *args, **kwargs):
+        tk.Frame.__init__(self, *args, **kwargs)
+        self.config(background = backcolor)
+
+        #Pages
+        page_main_menu = Page_Main_Menu(self)
+        page_create_experiment = Page_Create_Experiment(self)
+        page_start_experiment = Page_Start_Experiment(self)
+
+        #Page Navigation
+        buttonframe = tk.Frame(self, background = backcolor)
+        container = tk.Frame(self, background = backcolor)
+        buttonframe.pack(side="top", fill="x", expand=False)
+        container.pack(side="top", fill="both", expand=True)
+
+        #Place pages in the container frame
+        page_main_menu.place(in_=container)
+        page_create_experiment.place(in_=container)
+        page_start_experiment.place(in_=container)
+
+        #Place buttons in the top-level button frame
+        b1 = tk.Button(buttonframe, text="Main Menu", font=default_font, command=page_main_menu.lift, background = ui_element_color, foreground = forecolor)
+        b2 = tk.Button(buttonframe, text="Create Experiment", font=default_font, command=page_create_experiment.lift, background = ui_element_color, foreground = forecolor)
+        b3 = tk.Button(buttonframe, text="Start Experiment", font=default_font, command=page_start_experiment.lift, background = ui_element_color, foreground = forecolor)
+
+        #Pack buttons
+        b1.pack(side="left")
+        b2.pack(side="left")
+        b3.pack(side="left")
+
+        #Show the main menu
+        page_main_menu.show()
 
 main()
