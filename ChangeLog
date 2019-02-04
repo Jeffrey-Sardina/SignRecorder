@@ -1,3 +1,25 @@
+v. 0.0 to 0.2alpha
+    User-side:
+        Complete UI revamp. The program now runs maximized and uses a more clear dark theme
+        UI is now branched into three sections--an info menu, a section to create experiments, and a section to load created experiments.
+        Experiments can be created, and the result is a .csv formatted file that can be loaded at a later time to run the experiment in the recorder
+        Stimuli can not be images, video, or text--but the display of those is a bit unpolished
+    
+    Dev-side:
+        Removes a whole host of code: the Subject class and the old UI loading methods
+        Moved to a OO class-based approach for the UI
+        Code is now a .pyw so it does not create a terminal
+        Settings class added, which links to and loads from a config file
+        Logging to disk through the python logging utilities implemented
+        Dependency list added (renamed to requirements so GitHub would recognize it)
+        setup.py script added with dependency opencv-python listed
+    
+    Notes:
+        This version is an alpha. It is quite a bit unstable, but core functionality is leaps and bounds ahead of 0.1.
+            See 'Known Bugs' for more details
+        Please be wary about editing the config file. There is no way to restore it yet!
+        Feel free to disregard the build folder--I think I may move away from trying to compile the program. Not sure yet--that will be made clear in a later version.
+
 v. 0.0 to 0.1
     User-side:
         Edited the About tab to contain all the data that used to be in "Credits"

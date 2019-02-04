@@ -13,21 +13,21 @@ settings = None
 
 #data
 webcam_num = 0
+study_name = ''
+study_files = []
+stimulus_type = ''
+stimuli_set = []
+records_since_last_next = 0
+current_stimulus = 0
+video_id = 0
 
 #recording
 window = None
 recording = False
-just_started = True
 
 #tk ui
 record_button = None
-data_label = None
 pop_up_window = None
-
-#exp data
-subjects = []
-records_since_last_next = 0
-current_subject = 0
 
 #Themeing
 backcolor = '#000000'
@@ -64,11 +64,7 @@ def main():
     init_logging()
     find_webcams(10)
     init_config()
-    load_data()
     init_gui()
-    #Image_Displayer(os.path.abspath('test.jpg'), 1000).start()
-    #Image_Displayer(os.path.abspath('test2.jpg'), 1000).start()
-    #Video_Displayer(os.path.abspath('test.avi')).start()
 
 def init_logging():
     global logger
@@ -93,17 +89,6 @@ def find_webcams(search_num):
 def init_config():
     global settings
     settings = Settings()
-
-def load_data():
-    try:
-        with open('subjects.csv', 'r') as subject_data:
-            for line in subject_data:
-                name, sign_string = line.split(':')
-                stimuli = sign_string.split(',')
-                subjects.append(Subject(name, stimuli))
-    except Exception as err:
-        logger.warning('No experiment data found: ' + str(err))
-        subjects.append(Subject('No data found', ' '))
 
 def init_gui():
     #Master window
@@ -140,10 +125,7 @@ def on_key_release(event):
         on_button_exit()
 
 def on_button_record():
-    global recording, records_since_last_next, just_started
-    if just_started:
-        just_started = False
-        on_button_next()
+    global recording, records_since_last_next, video_id
     if recording:
         recording = False
         record_button.config(text = 'Record')
@@ -151,40 +133,24 @@ def on_button_record():
         recording = True
         records_since_last_next += 1
         record_button.config(text = 'Stop')
-        name = subjects[current_subject].name
-        stimulus, stimulus_type = subjects[current_subject].current_stimulus_value()
-        data_label.config(text = name + '; ' + stimulus)
-        Recorder(name + ' ' + stimulus + '--Try' + str(records_since_last_next), 30, True).start()
+        stimulus = stimuli_set[current_stimulus].strip()
+        if stimulus_type == 'Text':
+            pop_up_window = tk.Tk()
+            text_label = tk.Label(pop_up_window, text = stimulus, font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+            text_label.grid(row=0, column=0)
+        elif stimulus_type == 'Image':
+            Image_Displayer(stimulus, 1000).start()
+        elif stimulus_type == 'Video':
+            Video_Displayer(stimulus, 1000).start()
+        Recorder(str(video_id) + '--Try' + str(records_since_last_next), 30, True).start()
+        video_id += 1
 
 def on_button_next():
-    global records_since_last_next, just_started
+    global records_since_last_next, current_stimulus
     records_since_last_next = 0
-    if just_started:
-        just_started = False
     if recording:
         on_button_record()
-    next_stimulus_or_subject()
-
-def next_stimulus_or_subject():
-    global current_subject, data_label
-    if not current_subject >= len(subjects):
-        subject = subjects[current_subject]
-        name = subject.name
-        stimulus, stimulus_type = subject.next_stimulus()
-    else:
-        name = ''
-        stimulus = None
-        
-    if stimulus == None:
-        current_subject += 1
-        if current_subject >= len(subjects):
-            data_label.config(text = 'All data collected')
-        else:
-            name = subjects[current_subject].name
-            stimulus, stimulus_type = subjects[current_subject].next_stimulus()
-            data_label.config(text = name + '; ' + stimulus)
-    else:
-        data_label.config(text = name + '; ' + stimulus)
+    current_stimulus += 1
 
 def on_button_exit():
     global recording
@@ -208,15 +174,15 @@ class Settings():
                     key, value = line.split(',', 1)
                     if key == 'cam_num':
                         self.cam_num = int(value)
-                    if key == 'display_cam_feed':
+                    elif key == 'display_cam_feed':
                         self.display_cam_feed = int(value) == 1
-                    if key == 'allow_override':
+                    elif key == 'allow_override':
                         self.allow_override = int(value) == 1
-                    if key == 'backcolor':
+                    elif key == 'backcolor':
                         backcolor = value.strip()
-                    if key == 'forecolor':
+                    elif key == 'forecolor':
                         forecolor = value.strip()
-                    if key == 'ui_element_color':
+                    elif key == 'ui_element_color':
                         ui_element_color = value.strip()
         except Exception as err:
             logger.error('Settings.load_config: could not read config file: ' + str(err))
@@ -248,7 +214,7 @@ class Recorder(threading.Thread):
         if os.path.exists(file_name) and not settings.allow_override:
             logger.critical('Cannot overwrite existing video file: ' + file_name)
             raise Exception('Cannot overwrite existing video file: ' + file_name)
-        else:            
+        else:
             video_writer= cv2.VideoWriter(self.name + '.avi', fourcc, self.fps, (width, height))
 
         if not web_cam.isOpened():
@@ -333,47 +299,6 @@ class Image_Displayer(threading.Thread):
         if cv2.waitKey(self.time) & 0xFF == ord('¬'):
             cv2.destroyAllWindows() # destroys the window showing image
 
-
-class Subject():
-    name = 'un-named'
-    stimuli = []
-    current_stimulus = -1
-
-    def __init__(self, name, stimuli):
-        self.name = name
-        self.stimuli = stimuli
-
-    def next_stimulus(self):
-        self.current_stimulus += 1
-        if self.current_stimulus < len(self.stimuli):
-            stimulus = self.stimuli[self.current_stimulus].strip()
-            return stimulus, self.determine_stimulus_type(stimulus)
-        else:
-            return None, None
-
-    def current_stimulus_value(self):
-        if self.current_stimulus < len(self.stimuli):
-            stimulus_type = self.determine_stimulus_type(self.current_stimulus)
-            stimulus = self.format_stimulus_output(self.stimuli[self.current_stimulus].strip(), stimulus_type)
-            return stimulus, stimulus_type
-        else:
-            return 'None', None
-
-    def determine_stimulus_type(self, stimulus):
-        is_file = os.path.isfile(stimulus)
-        if is_file:
-            img_type = imghdr.what(stimulus)
-            if img_type != None:
-                return 'i'
-            else:
-                return 'v'
-        return 't'
-
-    def format_stimulus_output(self, stimulus, stimulus_type):
-        if stimulus_type == 'i' or stimulus_type == 'v':
-            return os.path.abspath(stimulus)
-        return stimulus
-
 class Page(tk.Frame):
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
@@ -427,7 +352,7 @@ class Page_Create_Experiment(Page):
         file_text = '''
         Please Select the files to use for stimuli. These will be used during the experiment.
         --For videos or images, select the video or image files from your computer.
-        --For text stimuli, select a plaintext file contianing each stimulus on a separate line.
+        --For text stimuli, select files contianing each stimulus in one file.
         '''
         file_label = tk.Label(self, text = file_text, font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
         file_label.grid(row=4, column=0, padx=padding_x, pady=padding_y)
@@ -447,7 +372,7 @@ class Page_Create_Experiment(Page):
     def create_experiment(self):
         experimant_name = self.entry.get() + '.exp'
         if os.path.exists(experimant_name) and not settings.allow_override:
-            logger.critical('File already exists and cannot be overwritten due to config specifications')
+            logger.critical('Page_Create_Experiment: create_experiment: File already exists and cannot be overwritten due to config specifications')
         try:
             with open(experimant_name, 'w') as experiment:
                 print('name,' + self.entry.get(), file=experiment)
@@ -455,20 +380,17 @@ class Page_Create_Experiment(Page):
                 for exp_file in self.files:
                     print('file,' + exp_file, file=experiment)
         except:
-            pass
+            logger.error('Page_Create_Experiment: create_experiment: Could not write experiment file')
+            raise
 
 class Page_Start_Experiment(Page):
-    name = ''
-    files = []
-    type = ''
-
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
         self.config(background = backcolor)
         self.init_elements()
 
     def init_elements(self):
-        global record_button, data_label
+        global record_button
         padding_x = 10
         padding_y = 10
 
@@ -478,8 +400,8 @@ class Page_Start_Experiment(Page):
         select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        file_label = tk.Label(self, text = 'Press Next to get started!', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
-        file_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        data_label = tk.Label(self, text = 'Use record to record for this stimulus, and next to advance to the next stimulus', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        data_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
         record_button = tk.Button(self, text ="Record", command = on_button_record, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         record_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
@@ -488,20 +410,31 @@ class Page_Start_Experiment(Page):
         next_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
     def load_experiment(self):
+        global study_name, stimulus_type, stimuli_set
         experiment_file = filedialog.askopenfilename(parent=self, initialdir="/", title='Select Experiment')
         try:
             with open(experiment_file, 'r') as experiment:
                 for line in experiment:
                     key, value = line.strip().split(',')
                     if key == 'name':
-                        self.name = value.strip()
-                    if key == 'type':
-                        self.type = value.strip()
-                    if key == 'file':
-                        self.files.append(value.strip())
-        except:
-            pass
+                        study_name = value.strip()
+                    elif key == 'type':
+                        stimulus_type = value.strip()
+                    elif key == 'file':
+                        study_files.append(value.strip())
 
+            if stimulus_type == 'Text':
+                text_stimuli = []
+                with open(study_files[0]) as data:
+                    for line in data:
+                        text_stimuli.append(line)
+                stimuli_set = text_stimuli
+            else:
+                stimuli_set = study_files
+        except:
+            logger.error('Page_Start_Experiment: load_experiment: Could not load experiment file')
+            raise
+            
 class MainFrame(tk.Frame):
     page_main_menu =  None
     page_create_experiment = None
