@@ -62,7 +62,7 @@ made an experiemnt, save it so that you can load it later.
 
 def main():
     init_logging()
-    find_webcams(10)
+    #find_webcams(10)
     init_config()
     init_gui()
 
@@ -276,7 +276,7 @@ class Video_Displayer(threading.Thread):
                 cv2.imshow(self.file_name, frame)
 
             #Have the key to exit be somehting noone will press
-            if cv2.waitKey(fps) & 0xFF == ord('¬'):
+            if cv2.waitKey(fps) & 0xFF == ord('1'):
                 break
         
         video_input.release()
@@ -296,7 +296,7 @@ class Image_Displayer(threading.Thread):
     def run(self):
         image = cv2.imread(self.file_name)
         cv2.imshow(self.file_name, image)
-        if cv2.waitKey(self.time) & 0xFF == ord('¬'):
+        if cv2.waitKey(self.time):
             cv2.destroyAllWindows() # destroys the window showing image
 
 class Page(tk.Frame):
