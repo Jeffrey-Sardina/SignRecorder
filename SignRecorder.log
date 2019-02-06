@@ -1,1 +1,2 @@
-INFO - 2019-02-05 23:12:07,056 - Starting log
+INFO - 2019-02-05 23:47:41,638 - Starting log
+CRITICAL - 2019-02-05 23:47:44,298 - Cannot overwrite existing video file: 0.avi

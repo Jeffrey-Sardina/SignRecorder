@@ -18,6 +18,7 @@ study_files = []
 stimulus_type = ''
 stimuli_set = []
 current_stimulus = 0
+video_path = ''
 video_id = 0
 
 #recording
@@ -40,28 +41,6 @@ forecolor = '#ffffff'
 
 #text
 default_font = 20
-controls_text = '''
-Space: start / stop recording
-Escape: quit
-'''
-
-about_text = '''
-Version: 0.1
-Developer: Jeffrey Sardina 
-
-SignRecorder is a simple program for recording and saving 
-video '.avi' files for sign language data collection and
-experiments. It is currently hosted on GitHub
-(https://github.com/Jeffrey-Sardina/SignRecorder)
-as an open-source project.
-'''
-
-into_text = '''
-To get started, click on either 'Create Experiemnt' or 
-'Start Experiment'. The program will guide you through
-loading stimuli and experimental methods. Once you have
-made an experiemnt, save it so that you can load it later.
-'''
 
 def main():
     init_vars()
@@ -104,6 +83,7 @@ def init_config():
 
 def init_gui():
     global width, height
+
     #Master window
     window = tk.Tk()
     window.wm_title('Sign Recorder')
@@ -120,6 +100,7 @@ def init_gui():
     window.bind_all('<KeyPress>', on_key_press)
     window.bind_all('<KeyRelease>', on_key_release)
     
+    #Show window
     window.mainloop()
 
 def on_key_press(event):
@@ -188,9 +169,9 @@ def pop_up(message):
 
     pop_up_window.mainloop()
 
-def write_meta(id):
+def write_meta(path, name):
     try:
-        file_name = id + '.meta.csv'
+        file_name = os.path.join(path, name + '.meta.csv')
         if os.path.exists(file_name) and not settings.allow_override:
             message = 'Cannot overwrite existing meta file: ' + file_name
             logger.critical(message)
@@ -378,14 +359,32 @@ class Page_Main_Menu(Page):
         self.init_elements()
 
     def init_elements(self):
-        label = tk.Label(self, text=about_text + '\n\n' + into_text, justify='left', font = default_font, background = backcolor, foreground = forecolor)
-        label.pack(side="top")
+        about_text = '''
+        Version: 0.1
+        Developer: Jeffrey Sardina 
+
+        SignRecorder is a simple program for recording and saving 
+        video '.avi' files for sign language data collection and
+        experiments. It is currently hosted on GitHub
+        (https://github.com/Jeffrey-Sardina/SignRecorder)
+        as an open-source project.
+ 
+        To get started, click on either 'Create Experiemnt' or 
+        'Start Experiment'. The program will guide you through
+        loading stimuli and experimental methods. Once you have
+        made an experiemnt, save it so that you can load it later.
+        '''
+
+        file_text = tk.Text(self, font = default_font, height = 15, width = 70, background = ui_element_color, foreground = forecolor)
+        file_text.insert(tk.INSERT, about_text)
+        file_text.config(state = 'disabled')
+        file_text.grid(row=0, column=0)
 
 class Page_Create_Experiment(Page):
     files = []
     option_selected = None
     entry = None
-    selected_files_info_label = None
+    selected_files_info_text = None
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -395,43 +394,61 @@ class Page_Create_Experiment(Page):
         padding_x = 10
         padding_y = 10
 
-        stimulus_label = tk.Label(self, text = 'Select Stimulus Type', font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
-        stimulus_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        stimulus_text.insert(tk.INSERT, '\nSelect Stimulus Type')
+        stimulus_text.tag_configure("center", justify='center')
+        stimulus_text.tag_add("center", 1.0, "end")
+        stimulus_text.config(state = 'disabled')
+        stimulus_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
         options = ['Video', 'Image', 'Text']
         default_option = options[0]
         self.option_selected = tk.StringVar(self)
         option_menu = tk.OptionMenu(self, self.option_selected, *options)
         self.option_selected.set(default_option)
-        option_menu.config(background = ui_element_color, foreground = forecolor)
+        option_menu.config(background = ui_element_color, foreground = forecolor, height = 3, width = 30, font = default_font)
         option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        file_text = '''
+        filestring = '''
         Please Select the files to use for stimuli. These will be used during the experiment.
         --For videos or images, select the video or image files from your computer.
         --For text stimuli, select files contianing each stimulus in one file.
         '''
-        file_label = tk.Label(self, text = file_text, font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
-        file_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        select_text = tk.Text(self, font = default_font, height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        select_text.insert(tk.INSERT, filestring)
+        select_text.tag_configure("center", justify='center')
+        select_text.tag_add("center", 1.0, "end")
+        select_text.config(state = 'disabled')
+        select_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
         select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
-        file_label = tk.Label(self, text = 'Once you are done, press create experiment to save an experiment file', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
-        file_label.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+        file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        file_text.insert(tk.INSERT, '\nOnce you are done, press create experiment to save an experiment file')
+        file_text.tag_configure("center", justify='center')
+        file_text.tag_add("center", 1.0, "end")
+        file_text.config(state = 'disabled')
+        file_text.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
         select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_files_button.grid(row=5, column=0, padx=padding_x, pady=padding_y)
 
-        self.selected_files_info_label = tk.Label(self, text = '', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
-        self.selected_files_info_label.grid(row=0, column=1, padx=padding_x, pady=padding_y)
+        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = ui_element_color, foreground = forecolor)
+        self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
+        self.selected_files_info_text.config(state = 'disabled')
+        self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
 
     def load_files(self):
         self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Files' + self.option_selected.get() + ' files')
         display_text = 'Files selected:\n'
         for file_name in self.files:
             display_text += os.path.basename(file_name) + '\n'
-        self.selected_files_info_label.config(text = display_text)
+        self.selected_files_info_text.config(state = 'normal')
+        self.selected_files_info_text.delete(1.0, tk.END)
+        self.selected_files_info_text.insert(tk.INSERT, display_text)
+        self.selected_files_info_text.config(state = 'disabled')
 
     def create_experiment(self):
         experimant_name = filedialog.asksaveasfilename(initialdir = "/", title = "Save file", filetypes = (("experiment files","*.exp"), ("all files","*.*")))
@@ -445,7 +462,6 @@ class Page_Create_Experiment(Page):
             message = 'Error: Could not write experiment file'
             logger.error(message + ': ' + str(err))
             pop_up(message)
-            raise
 
 class Page_Start_Experiment(Page):
     def __init__(self, *args, **kwargs):
@@ -456,19 +472,30 @@ class Page_Start_Experiment(Page):
         padding_x = 10
         padding_y = 10
 
-        file_label = tk.Label(self, text = 'Select and experiment file to load', font = default_font, justify='left', height = 5, width = 100, background = ui_element_color, foreground = forecolor)
-        file_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        file_text.insert(tk.INSERT, '\nSelect and experiment file to load')
+        file_text.tag_configure("center", justify='center')
+        file_text.tag_add("center", 1.0, "end")
+        file_text.config(state = 'disabled')
+        file_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
         select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        how_to_label_text = '''
-        When you are ready to bein the experiment, press and hold the space bar. You will then see the image prompt.
-        Once you are ready to sign based on what you see, remove your hands from the space bar and begin to sign.
+        how_to_string = '''
+        When you are ready to begin the experiment, press and hold the space bar. 
+        You will then see the image prompt.
+
+        Once you are ready to sign based on what you see, remove your hands from 
+        the space bar and begin to sign.
+
         Once you are done signing, place your hands back on space and hold to advance.
         '''
-        how_to_label = tk.Label(self, text = how_to_label_text, font = default_font, justify='left', height = 5, width = 100, background = ui_element_color, foreground = forecolor)
-        how_to_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        how_to_text = tk.Text(self, font = default_font, height = 9, width = 70, background = ui_element_color, foreground = forecolor)
+        how_to_text.insert(tk.INSERT, how_to_string)
+        how_to_text.config(state = 'disabled')
+        how_to_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
 
     def load_experiment(self):
         global study_name, stimulus_type, stimuli_set
@@ -496,7 +523,6 @@ class Page_Start_Experiment(Page):
             message = 'Could not load experiment file'
             logger.error(message + ': ' + str(err))
             pop_up(message)
-            raise
             
 class MainFrame(tk.Frame):
     page_main_menu =  None
