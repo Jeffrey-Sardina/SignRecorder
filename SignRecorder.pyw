@@ -5,7 +5,7 @@ import threading
 import sys
 import logging
 import os
-import imghdr
+import time
 
 #backend
 logger = None
@@ -17,7 +17,6 @@ study_name = ''
 study_files = []
 stimulus_type = ''
 stimuli_set = []
-records_since_last_next = 0
 current_stimulus = 0
 video_id = 0
 
@@ -26,8 +25,13 @@ window = None
 recording = False
 
 #tk ui
-record_button = None
 pop_up_window = None
+width = 0
+height = 0
+
+#timing
+display_timer = None
+recording_timer = None
 
 #Themeing
 backcolor = '#000000'
@@ -38,7 +42,6 @@ forecolor = '#ffffff'
 default_font = 20
 controls_text = '''
 Space: start / stop recording
-Enter: next stimulus / subject
 Escape: quit
 '''
 
@@ -61,10 +64,16 @@ made an experiemnt, save it so that you can load it later.
 '''
 
 def main():
+    init_vars()
     init_logging()
     #find_webcams(10)
     init_config()
     init_gui()
+
+def init_vars():
+    global display_timer, recording_timer
+    display_timer = Timer()
+    recording_timer = Timer()
 
 def init_logging():
     global logger
@@ -84,13 +93,17 @@ def find_webcams(search_num):
             webcam_num += 1
             webcam_i.release()
     if webcam_num == 0:
-        logger.critical('No cameras found for recording!')
+        message = 'No cameras found for recording!'
+        logger.critical(message)
+        pop_up(message)
+        raise Exception(message)
 
 def init_config():
     global settings
     settings = Settings()
 
 def init_gui():
+    global width, height
     #Master window
     window = tk.Tk()
     window.wm_title('Sign Recorder')
@@ -104,52 +117,55 @@ def init_gui():
     main_frame.pack(side="top", fill="both", expand=True)
 
     #input
+    window.bind_all('<KeyPress>', on_key_press)
     window.bind_all('<KeyRelease>', on_key_release)
     
     window.mainloop()
 
-def on_key_down(event):
+def on_key_press(event):
     if event.keysym == 'space':
-        pass
-    elif event.keysym == 'Return':
-        pass
-    elif event.keysym == 'Escape':
-        pass
+        on_button_space_press()
 
 def on_key_release(event):
     if event.keysym == 'space':
-        on_button_record()
-    elif event.keysym == 'Return':
-        on_button_next()
+        on_button_space_release()
     elif event.keysym == 'Escape':
         on_button_exit()
 
-def on_button_record():
-    global recording, records_since_last_next, video_id
+def on_button_space_press():
+    global recording
     if recording:
         recording = False
-        record_button.config(text = 'Record')
-    else:
-        recording = True
-        records_since_last_next += 1
-        record_button.config(text = 'Stop')
-        stimulus = stimuli_set[current_stimulus].strip()
-        if stimulus_type == 'Text':
-            pop_up_window = tk.Tk()
-            text_label = tk.Label(pop_up_window, text = stimulus, font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
-            text_label.grid(row=0, column=0)
-        elif stimulus_type == 'Image':
-            Image_Displayer(stimulus, 1000).start()
-        elif stimulus_type == 'Video':
-            Video_Displayer(stimulus, 1000).start()
-        Recorder(str(video_id) + '--Try' + str(records_since_last_next), 30, True).start()
-        video_id += 1
+        if recording_timer.active():
+            recording_timer.end()
+    load_next_stimulus()
 
-def on_button_next():
-    global records_since_last_next, current_stimulus
-    records_since_last_next = 0
-    if recording:
-        on_button_record()
+def on_button_space_release():
+    global video_id, recording
+    recording = True
+    recording_timer.begin()
+    Recorder(str(video_id), 30, True).start()
+    video_id += 1
+
+def load_next_stimulus():
+    global current_stimulus
+    stimulus = stimuli_set[current_stimulus].strip()
+    if display_timer.active():
+        display_timer.end()
+        write_meta(video_id)
+
+    if stimulus_type == 'Text':
+        display_timer.begin()
+        pop_up_window = tk.Tk()
+        text_label = tk.Label(pop_up_window, text = stimulus, font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        text_label.grid(row=0, column=0)
+    elif stimulus_type == 'Image':
+        display_timer.begin()
+        Image_Displayer(stimulus).start()
+    elif stimulus_type == 'Video':
+        display_timer.begin()
+        Video_Displayer(stimulus).start()
+
     current_stimulus += 1
 
 def on_button_exit():
@@ -158,9 +174,39 @@ def on_button_exit():
         recording = False
     sys.exit()
 
+def pop_up(message):
+    global pop_up_window
+    pop_up_window = tk.Tk()
+    pop_up_window.wm_title('Error Loading File')
+    pop_up_window.config(background=backcolor)
+
+    text_label = tk.Label(pop_up_window, text = message, font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+    text_label.grid(row=0, column=0)
+
+    select_files_button = tk.Button(pop_up_window, text ="Close", command = pop_up_window.destroy, font = default_font, height = 3, width = 10, background = ui_element_color, foreground = forecolor)
+    select_files_button.grid(row=1, column=0)
+
+    pop_up_window.mainloop()
+
+def write_meta(id):
+    try:
+        file_name = id + '.meta.csv'
+        if os.path.exists(file_name) and not settings.allow_override:
+            message = 'Cannot overwrite existing meta file: ' + file_name
+            logger.critical(message)
+            pop_up(message)
+            raise Exception(message)
+        with open(file_name, 'w') as meta:
+            print('display_time,' + str(display_timer.timespan), file = meta)
+            print('recording_time,' + str(recording_timer.timespan), file = meta)
+            print('tota;_time' + str(display_timer.timespan + recording_timer.timespan), file = meta)
+    except Exception as err:
+        message = 'Failed to write meta file: ' + file_name
+        logger.critical(message + ': ' + str(err))
+        pop_up(message)
+        raise Exception(message)
+
 class Settings():
-    cam_num = 0
-    display_cam_feed = False
     allow_override = False
 
     def __init__(self):
@@ -172,11 +218,7 @@ class Settings():
             with open('config.csv', 'r') as config:
                 for line in config:
                     key, value = line.split(',', 1)
-                    if key == 'cam_num':
-                        self.cam_num = int(value)
-                    elif key == 'display_cam_feed':
-                        self.display_cam_feed = int(value) == 1
-                    elif key == 'allow_override':
+                    if key == 'allow_override':
                         self.allow_override = int(value) == 1
                     elif key == 'backcolor':
                         backcolor = value.strip()
@@ -185,7 +227,10 @@ class Settings():
                     elif key == 'ui_element_color':
                         ui_element_color = value.strip()
         except Exception as err:
-            logger.error('Settings.load_config: could not read config file: ' + str(err))
+            message = 'Could not read config file'
+            logger.error(message + ': ' + str(err))
+            pop_up(message)
+            raise
 
 class Recorder(threading.Thread):
     name = ''
@@ -212,14 +257,18 @@ class Recorder(threading.Thread):
         #create VideoWriter object
         file_name = self.name + '.avi'
         if os.path.exists(file_name) and not settings.allow_override:
-            logger.critical('Cannot overwrite existing video file: ' + file_name)
-            raise Exception('Cannot overwrite existing video file: ' + file_name)
+            message = 'Cannot overwrite existing video file: ' + file_name
+            logger.critical(message)
+            pop_up(message)
+            raise Exception(message)
         else:
             video_writer= cv2.VideoWriter(self.name + '.avi', fourcc, self.fps, (width, height))
 
         if not web_cam.isOpened():
-            logger.warning('Recorder.run: Could not open webcam: ')
-            raise Exception('Recorder.run: Could not open webcam')
+            message = 'Could not open webcam'
+            logger.warning(message)
+            pop_up(message)
+            raise Exception(message)
     
         while web_cam.isOpened():
             # Capture frame-by-frame
@@ -232,20 +281,16 @@ class Recorder(threading.Thread):
 
                 # Saves for video
                 video_writer.write(frame)
-    
-                # Display the resulting frame
-                cv2.imshow(self.name, frame)
             else:
                 break
     
             if cv2.waitKey(1) & 0xFF == ord(' '): #quit on space
-                on_button_record()
+                on_button_space_release()
                 break
     
         # When everything done, release the capture
         web_cam.release()
         video_writer.release()
-        cv2.destroyWindow(self.name)
 
 class Video_Displayer(threading.Thread):
     file_name = ''
@@ -262,8 +307,13 @@ class Video_Displayer(threading.Thread):
         logger.info('Video ' + self.file_name + ' running at fps=' + str(int(fps)))
 
         if not video_input.isOpened():
-            logger.warning('display_video: Could not open video file for reading: ')
-            raise Exception('display_video: Could not open video file for reading')
+            message = 'Could not open video file for reading'
+            logger.warning(message)
+            pop_up(message)
+            raise Exception(message)
+
+        cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
+        cv2.setWindowProperty(self.file_name ,cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         while video_input.isOpened():
             #Get the next frame
             is_reading, frame = video_input.read()
@@ -287,17 +337,33 @@ class Image_Displayer(threading.Thread):
     mirror = False
     time = 0
 
-    def __init__(self, file_name, time, mirror = False):
+    def __init__(self, file_name, mirror = False):
         threading.Thread.__init__(self)
         self.file_name = file_name
         self.mirror = mirror
-        self.time = time
 
     def run(self):
         image = cv2.imread(self.file_name)
+        cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
+        cv2.setWindowProperty(self.file_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow(self.file_name, image)
         if cv2.waitKey(self.time):
-            cv2.destroyAllWindows() # destroys the window showing image
+            cv2.destroyWindow(self.file_name)
+
+class Timer():
+    start_time = 0
+    end_time = 0
+    timespan = 0
+
+    def begin(self):
+        self.start_time = time.time()
+    
+    def end(self):
+        self.end_time = time.time()
+        self.timespan = self.start_time - self.end_time
+
+    def active(self):
+        return self.start_time >= self.end_time
 
 class Page(tk.Frame):
     def __init__(self, *args, **kwargs):
@@ -309,7 +375,6 @@ class Page(tk.Frame):
 class Page_Main_Menu(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
-        self.config(background = backcolor)
         self.init_elements()
 
     def init_elements(self):
@@ -320,10 +385,10 @@ class Page_Create_Experiment(Page):
     files = []
     option_selected = None
     entry = None
+    selected_files_info_label = None
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
-        self.config(background = backcolor)
         self.init_elements()
         
     def init_elements(self):
@@ -341,73 +406,69 @@ class Page_Create_Experiment(Page):
         option_menu.config(background = ui_element_color, foreground = forecolor)
         option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        name_label = tk.Label(self, text = 'Enter the name of the experiment', font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
-        name_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
-
-        self.entry = tk.StringVar(self)
-        name_entry = tk.Entry(self, textvariable = self.entry)
-        name_entry.focus_set()
-        name_entry.grid(row=3, column=0, padx=padding_x, pady=padding_y)
-
         file_text = '''
         Please Select the files to use for stimuli. These will be used during the experiment.
         --For videos or images, select the video or image files from your computer.
         --For text stimuli, select files contianing each stimulus in one file.
         '''
         file_label = tk.Label(self, text = file_text, font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        file_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+
+        file_label = tk.Label(self, text = 'Once you are done, press create experiment to save an experiment file', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
         file_label.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
-        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_files_button.grid(row=5, column=0, padx=padding_x, pady=padding_y)
 
-        file_label = tk.Label(self, text = 'Once you are done, press create experiment!', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
-        file_label.grid(row=6, column=0, padx=padding_x, pady=padding_y)
-
-        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = (None, 15), height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        select_files_button.grid(row=7, column=0, padx=padding_x, pady=padding_y)
+        self.selected_files_info_label = tk.Label(self, text = '', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        self.selected_files_info_label.grid(row=0, column=1, padx=padding_x, pady=padding_y)
 
     def load_files(self):
-        self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select ' + self.option_selected.get() + ' files')
+        self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Files' + self.option_selected.get() + ' files')
+        display_text = 'Files selected:\n'
+        for file_name in self.files:
+            display_text += os.path.basename(file_name) + '\n'
+        self.selected_files_info_label.config(text = display_text)
 
     def create_experiment(self):
-        experimant_name = self.entry.get() + '.exp'
-        if os.path.exists(experimant_name) and not settings.allow_override:
-            logger.critical('Page_Create_Experiment: create_experiment: File already exists and cannot be overwritten due to config specifications')
+        experimant_name = filedialog.asksaveasfilename(initialdir = "/", title = "Save file", filetypes = (("experiment files","*.exp"), ("all files","*.*")))
         try:
             with open(experimant_name, 'w') as experiment:
                 print('name,' + self.entry.get(), file=experiment)
                 print('type,' + self.option_selected.get(), file=experiment)
                 for exp_file in self.files:
                     print('file,' + exp_file, file=experiment)
-        except:
-            logger.error('Page_Create_Experiment: create_experiment: Could not write experiment file')
+        except Exception as err:
+            message = 'Error: Could not write experiment file'
+            logger.error(message + ': ' + str(err))
+            pop_up(message)
             raise
 
 class Page_Start_Experiment(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
-        self.config(background = backcolor)
         self.init_elements()
 
     def init_elements(self):
-        global record_button
         padding_x = 10
         padding_y = 10
 
-        file_label = tk.Label(self, text = 'Select and experiment ile to load', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+        file_label = tk.Label(self, text = 'Select and experiment file to load', font = default_font, justify='left', height = 5, width = 100, background = ui_element_color, foreground = forecolor)
         file_label.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
         select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        data_label = tk.Label(self, text = 'Use record to record for this stimulus, and next to advance to the next stimulus', font = default_font, justify='left', height = 5, width = 70, background = ui_element_color, foreground = forecolor)
-        data_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
-
-        record_button = tk.Button(self, text ="Record", command = on_button_record, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        record_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
-
-        next_button = tk.Button(self, text ="Next", command = on_button_next, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        next_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+        how_to_label_text = '''
+        When you are ready to bein the experiment, press and hold the space bar. You will then see the image prompt.
+        Once you are ready to sign based on what you see, remove your hands from the space bar and begin to sign.
+        Once you are done signing, place your hands back on space and hold to advance.
+        '''
+        how_to_label = tk.Label(self, text = how_to_label_text, font = default_font, justify='left', height = 5, width = 100, background = ui_element_color, foreground = forecolor)
+        how_to_label.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
     def load_experiment(self):
         global study_name, stimulus_type, stimuli_set
@@ -431,8 +492,10 @@ class Page_Start_Experiment(Page):
                 stimuli_set = text_stimuli
             else:
                 stimuli_set = study_files
-        except:
-            logger.error('Page_Start_Experiment: load_experiment: Could not load experiment file')
+        except Exception as err:
+            message = 'Could not load experiment file'
+            logger.error(message + ': ' + str(err))
+            pop_up(message)
             raise
             
 class MainFrame(tk.Frame):
@@ -445,9 +508,9 @@ class MainFrame(tk.Frame):
         self.config(background = backcolor)
 
         #Pages
-        self.page_main_menu = Page_Main_Menu(self)
-        self.page_create_experiment = Page_Create_Experiment(self)
-        self.page_start_experiment = Page_Start_Experiment(self)
+        self.page_main_menu = Page_Main_Menu(self, width = width, height = height, background = backcolor)
+        self.page_create_experiment = Page_Create_Experiment(self, width = width, height = height, background = backcolor)
+        self.page_start_experiment = Page_Start_Experiment(self, width = width, height = height, background = backcolor)
 
         #Page Navigation
         buttonframe = tk.Frame(self, background = backcolor)
@@ -475,12 +538,17 @@ class MainFrame(tk.Frame):
 
     def select_main_menu(self):
         self.page_main_menu.lift()
+        self.page_create_experiment.lower()
+        self.page_start_experiment.lower()
 
     def select_create_experiment(self):
         self.page_create_experiment.lift()
+        self.page_main_menu.lower()
+        self.page_start_experiment.lower()
 
     def select_start_experiment(self):
         self.page_start_experiment.lift()
-
+        self.page_create_experiment.lower()
+        self.page_main_menu.lower()
 
 main()

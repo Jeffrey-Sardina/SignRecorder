@@ -1,25 +1,26 @@
+Lab meeting TODO
+    Name files after image and subject id
+        Subject id entry box for each subject
+    Make a mac .sh / dbl click thing
+    Get it to record on MAC
+
 Important
-    Expose overwrite warnings!
     waitKey stuff
+
 General
-    Time recording
-        Start once stimulus has been completely shown (eg. after video)
-        Stop on button release
-        Before this comes a stimulus of fixed and known length; after comes the video this records; thus total time is known (but I do not need that)
     Write to <video_name>.meta files containing video data such as timing (see above)
     Allow search for more webcams after Start
     Actually use all the data loaded from the config file.
 
-Discussion
-    Experimental organization
-    Naming conventions
-
-Long-term / potential (ask lab)
-    Create / edit experiments from within the program
+Long-term / potential
     Output other file formats by user choice
-    Connect to ELAN API? (Does it even have one I can use?)
     Allow merging of videos
     Config file recovery if deleted
 
 Timing
-    I want to be on v. 0.2 (with video, image, or text stimuli and .meta records of timing) by Monday, Feb. 11
+    I want to be on v. 0.2beta (with video, image, or text stimuli and .meta records of timing) by Monday, Feb. 11
+
+Done
+    Space bar
+        Press - next or starts (and stop recording)
+        Release - start recording
