@@ -18,12 +18,16 @@ study_files = []
 stimulus_type = ''
 stimuli_set = []
 current_stimulus = 0
-video_path = ''
-video_id = 0
+video_path = None
+video_id = None
 
 #recording
 window = None
-recording = False
+recording = True
+ready_to_reset_recording = True
+
+#files
+out_dir = '.'
 
 #tk ui
 pop_up_window = None
@@ -82,7 +86,7 @@ def init_config():
     settings = Settings()
 
 def init_gui():
-    global width, height
+    global width, height, window
 
     #Master window
     window = tk.Tk()
@@ -114,26 +118,28 @@ def on_key_release(event):
         on_button_exit()
 
 def on_button_space_press():
-    global recording
-    if recording:
+    global recording, video_id, ready_to_reset_recording
+    if recording and ready_to_reset_recording:
         recording = False
+        ready_to_reset_recording = False
         if recording_timer.active():
             recording_timer.end()
-    load_next_stimulus()
+        video_id = os.path.basename(stimuli_set[current_stimulus].strip())
+        load_next_stimulus()
 
 def on_button_space_release():
-    global video_id, recording
+    global video_id, recording, ready_to_reset_recording
     recording = True
+    ready_to_reset_recording = True
     recording_timer.begin()
-    Recorder(str(video_id), 30, True).start()
-    video_id += 1
+    Recorder(video_id, 30, True).start()
 
 def load_next_stimulus():
     global current_stimulus
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
         display_timer.end()
-        write_meta(video_id)
+        write_meta(out_dir, video_id)
 
     if stimulus_type == 'Text':
         display_timer.begin()
@@ -170,17 +176,17 @@ def pop_up(message):
     pop_up_window.mainloop()
 
 def write_meta(path, name):
+    file_name = os.path.join(path, name + '.meta.csv')
     try:
-        file_name = os.path.join(path, name + '.meta.csv')
         if os.path.exists(file_name) and not settings.allow_override:
             message = 'Cannot overwrite existing meta file: ' + file_name
             logger.critical(message)
             pop_up(message)
             raise Exception(message)
         with open(file_name, 'w') as meta:
-            print('display_time,' + str(display_timer.timespan), file = meta)
-            print('recording_time,' + str(recording_timer.timespan), file = meta)
-            print('tota;_time' + str(display_timer.timespan + recording_timer.timespan), file = meta)
+            print('display_time,' + str(display_timer.timespan), file=meta)
+            print('recording_time,' + str(recording_timer.timespan), file=meta)
+            print('tota;_time' + str(display_timer.timespan + recording_timer.timespan), file=meta)
     except Exception as err:
         message = 'Failed to write meta file: ' + file_name
         logger.critical(message + ': ' + str(err))
@@ -236,14 +242,14 @@ class Recorder(threading.Thread):
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
 
         #create VideoWriter object
-        file_name = self.name + '.avi'
+        file_name = os.path.join(out_dir, self.name + '.avi')
         if os.path.exists(file_name) and not settings.allow_override:
             message = 'Cannot overwrite existing video file: ' + file_name
             logger.critical(message)
             pop_up(message)
             raise Exception(message)
         else:
-            video_writer= cv2.VideoWriter(self.name + '.avi', fourcc, self.fps, (width, height))
+            video_writer= cv2.VideoWriter(file_name, fourcc, self.fps, (width, height))
 
         if not web_cam.isOpened():
             message = 'Could not open webcam'
@@ -265,7 +271,7 @@ class Recorder(threading.Thread):
             else:
                 break
     
-            if cv2.waitKey(1) & 0xFF == ord(' '): #quit on space
+            if cv2.waitKey(1) & 0xFF == ord('1'): #quit on 1
                 on_button_space_release()
                 break
     
@@ -302,11 +308,10 @@ class Video_Displayer(threading.Thread):
             if is_reading:
                 if self.mirror:
                     frame = cv2.flip(frame, 1)
-
-                #Display the resulting frame
                 cv2.imshow(self.file_name, frame)
+            else:
+                break
 
-            #Have the key to exit be somehting noone will press
             if cv2.waitKey(fps) & 0xFF == ord('1'):
                 break
         
@@ -344,7 +349,7 @@ class Timer():
         self.timespan = self.start_time - self.end_time
 
     def active(self):
-        return self.start_time >= self.end_time
+        return self.start_time > self.end_time
 
 class Page(tk.Frame):
     def __init__(self, *args, **kwargs):
@@ -359,6 +364,9 @@ class Page_Main_Menu(Page):
         self.init_elements()
 
     def init_elements(self):
+        padding_x = 10
+        padding_y = 10
+
         about_text = '''
         Version: 0.1
         Developer: Jeffrey Sardina 
@@ -378,7 +386,7 @@ class Page_Main_Menu(Page):
         file_text = tk.Text(self, font = default_font, height = 15, width = 70, background = ui_element_color, foreground = forecolor)
         file_text.insert(tk.INSERT, about_text)
         file_text.config(state = 'disabled')
-        file_text.grid(row=0, column=0)
+        file_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
 class Page_Create_Experiment(Page):
     files = []
@@ -454,7 +462,6 @@ class Page_Create_Experiment(Page):
         experimant_name = filedialog.asksaveasfilename(initialdir = "/", title = "Save file", filetypes = (("experiment files","*.exp"), ("all files","*.*")))
         try:
             with open(experimant_name, 'w') as experiment:
-                print('name,' + self.entry.get(), file=experiment)
                 print('type,' + self.option_selected.get(), file=experiment)
                 for exp_file in self.files:
                     print('file,' + exp_file, file=experiment)
@@ -473,7 +480,7 @@ class Page_Start_Experiment(Page):
         padding_y = 10
 
         file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
-        file_text.insert(tk.INSERT, '\nSelect and experiment file to load')
+        file_text.insert(tk.INSERT, '\nSelect an experiment file to load')
         file_text.tag_configure("center", justify='center')
         file_text.tag_add("center", 1.0, "end")
         file_text.config(state = 'disabled')
@@ -481,6 +488,16 @@ class Page_Start_Experiment(Page):
 
         select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+
+        dir_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        dir_text.insert(tk.INSERT, '\nSelect a folder in which to save the output')
+        dir_text.tag_configure("center", justify='center')
+        dir_text.tag_add("center", 1.0, "end")
+        dir_text.config(state = 'disabled')
+        dir_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        select_file_button = tk.Button(self, text ="Choose output folder", command = self.load_dir, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
+        select_file_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
         how_to_string = '''
         When you are ready to begin the experiment, press and hold the space bar. 
@@ -494,8 +511,16 @@ class Page_Start_Experiment(Page):
         how_to_text = tk.Text(self, font = default_font, height = 9, width = 70, background = ui_element_color, foreground = forecolor)
         how_to_text.insert(tk.INSERT, how_to_string)
         how_to_text.config(state = 'disabled')
-        how_to_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        how_to_text.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
+    def load_dir(self):
+        global out_dir
+        try:
+            out_dir = filedialog.askdirectory(parent = self, initialdir="/", title='Select Save Folder')
+        except Exception as err:
+            message = 'Could not load the selected directory'
+            logger.error(message + ': ' + str(err))
+            pop_up(message)
 
     def load_experiment(self):
         global study_name, stimulus_type, stimuli_set
@@ -523,7 +548,7 @@ class Page_Start_Experiment(Page):
             message = 'Could not load experiment file'
             logger.error(message + ': ' + str(err))
             pop_up(message)
-            
+
 class MainFrame(tk.Frame):
     page_main_menu =  None
     page_create_experiment = None
