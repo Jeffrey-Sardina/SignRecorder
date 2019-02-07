@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+#Not sure of this works right now (v.0.2alpha)
+
 from distutils.core import setup
 
 setup(name='Sign Recorder',

@@ -1,4 +1,4 @@
-v. 0.0 to 0.2alpha
+v. 0.1 to 0.2alpha
     User-side:
         Complete UI revamp. The program now runs maximized and uses a more clear dark theme
         UI is now branched into three sections--an info menu, a section to create experiments, and a section to load created experiments.
@@ -12,7 +12,7 @@ v. 0.0 to 0.2alpha
         Settings class added, which links to and loads from a config file
         Logging to disk through the python logging utilities implemented
         Dependency list added (renamed to requirements so GitHub would recognize it)
-        setup.py script added with dependency opencv-python listed
+        setup.py script added with dependency OpenCV-python listed
     
     Notes:
         This version is an alpha. It is quite a bit unstable, but core functionality is leaps and bounds ahead of 0.1.

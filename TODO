@@ -2,25 +2,19 @@ Lab meeting TODO
     Name files after image and subject id
         Subject id entry box for each subject
     Make a mac .sh / dbl click thing
-    Get it to record on MAC
+        Better: for v0.2stable, release an official installer
+    Fix bugs
 
 Important
     waitKey stuff
 
 General
-    Write to <video_name>.meta files containing video data such as timing (see above)
     Allow search for more webcams after Start
-    Actually use all the data loaded from the config file.
 
 Long-term / potential
-    Output other file formats by user choice
     Allow merging of videos
     Config file recovery if deleted
 
 Timing
     I want to be on v. 0.2beta (with video, image, or text stimuli and .meta records of timing) by Monday, Feb. 11
-
-Done
-    Space bar
-        Press - next or starts (and stop recording)
-        Release - start recording
+    Not sure when I will have v0.2stable

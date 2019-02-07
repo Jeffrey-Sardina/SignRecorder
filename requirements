@@ -1,4 +1,4 @@
 Dependency          Version Used        Notes
-opencv-python       4.0.0.21            Ships by default with post-1.15 numpy
+OpenCV-python       4.0.0.21            Ships by default with post-1.15 numpy
 numpy               1.15.0              Version 1.6+ works locally but is incompatible with Pyinstaller
 Pyinstaller         3.4                 Only if you wish to compile the program yourself
