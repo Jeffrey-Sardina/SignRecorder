@@ -11,15 +11,13 @@ import time
 logger = None
 settings = None
 
-#data
+#experiment data
 webcam_num = 0
 study_name = ''
 study_files = []
 stimulus_type = ''
 stimuli_set = []
 current_stimulus = 0
-video_path = None
-video_id = None
 
 #recording
 window = None
@@ -28,6 +26,8 @@ just_started = True
 
 #files
 out_dir = '.'
+video_path = None
+video_id = None
 
 #tk ui
 pop_up_window = None
