@@ -140,11 +140,11 @@ def on_button_space_press():
         load_stimulus()
 
 def on_button_space_release():
-    global video_id, recording, current_stimulus
+    global recording, current_stimulus
     recording = True
-    recording_timer.begin()
-    Recorder(video_id, 30, True).start()
     current_stimulus += 1
+    recording_timer.begin()
+    Recorder(video_id, 30, True).begin()
 
 def load_stimulus():
     stimulus = stimuli_set[current_stimulus].strip()
@@ -159,10 +159,10 @@ def load_stimulus():
         text_label.grid(row=0, column=0)
     elif stimulus_type == 'Image':
         display_timer.begin()
-        Image_Displayer(stimulus).start()
+        Image_Displayer(stimulus).begin()
     elif stimulus_type == 'Video':
         display_timer.begin()
-        Video_Displayer(stimulus).start()
+        Video_Displayer(stimulus).begin()
 
 def on_button_exit():
     global recording
@@ -172,12 +172,17 @@ def on_button_exit():
 
 def pop_up(message):
     global pop_up_window
+    padding_x = 10
+    padding_y = 10
+
     pop_up_window = tk.Tk()
     pop_up_window.wm_title('Error Loading File')
     pop_up_window.config(background=backcolor)
 
-    text_label = tk.Label(pop_up_window, text = message, font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
-    text_label.grid(row=0, column=0)
+    pop_up_text = tk.Text(pop_up_window, font = default_font, height = 5, width = 70, background = ui_element_color, foreground = forecolor)
+    pop_up_text.insert(tk.INSERT, message)
+    pop_up_text.config(state = 'disabled')
+    pop_up_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
     select_files_button = tk.Button(pop_up_window, text ="Close", command = pop_up_window.destroy, font = default_font, height = 3, width = 10, background = ui_element_color, foreground = forecolor)
     select_files_button.grid(row=1, column=0)
@@ -188,7 +193,7 @@ def write_meta(path, name):
     file_name = os.path.join(path, name + '.meta.csv')
     try:
         if os.path.exists(file_name) and not settings.allow_override:
-            message = 'Cannot overwrite existing meta file: ' + file_name
+            message = 'Cannot overwrite existing meta file:\n' + file_name
             logger.critical(message)
             pop_up(message)
             raise Exception(message)
@@ -228,18 +233,17 @@ class Settings():
             pop_up(message)
             raise
 
-class Recorder(threading.Thread):
+class Recorder():
     name = ''
     fps = 0
     mirror = False
 
     def __init__(self, name, fps, mirror):
-        threading.Thread.__init__(self)
         self.name = name
         self.fps = fps
         self.mirror = mirror
 
-    def run(self):
+    def begin(self):
         # Capturing video from webcam:
         web_cam = cv2.VideoCapture(0)
 
@@ -253,7 +257,7 @@ class Recorder(threading.Thread):
         #create VideoWriter object
         file_name = os.path.join(out_dir, self.name + '.avi')
         if os.path.exists(file_name) and not settings.allow_override:
-            message = 'Cannot overwrite existing video file: ' + file_name
+            message = 'Cannot overwrite existing video file:\n' + file_name
             logger.critical(message)
             pop_up(message)
             raise Exception(message)
@@ -288,16 +292,13 @@ class Recorder(threading.Thread):
         web_cam.release()
         video_writer.release()
 
-class Video_Displayer(threading.Thread):
+class Video_Displayer():
     file_name = ''
-    mirror = False
 
-    def __init__(self, file_name, mirror = False):
-        threading.Thread.__init__(self)
+    def __init__(self, file_name):
         self.file_name = file_name
-        self.mirror = mirror
 
-    def run(self):
+    def begin(self):
         video_input = cv2.VideoCapture(self.file_name)
         fps = int(video_input.get(cv2.CAP_PROP_FPS))
         logger.info('Video ' + self.file_name + ' running at fps=' + str(int(fps)))
@@ -315,8 +316,6 @@ class Video_Displayer(threading.Thread):
             is_reading, frame = video_input.read()
 
             if is_reading:
-                if self.mirror:
-                    frame = cv2.flip(frame, 1)
                 cv2.imshow(self.file_name, frame)
             else:
                 break
@@ -327,17 +326,14 @@ class Video_Displayer(threading.Thread):
         video_input.release()
         cv2.destroyWindow(self.file_name)
 
-class Image_Displayer(threading.Thread):
+class Image_Displayer():
     file_name = ''
-    mirror = False
     time = 0
 
-    def __init__(self, file_name, mirror = False):
-        threading.Thread.__init__(self)
+    def __init__(self, file_name):
         self.file_name = file_name
-        self.mirror = mirror
 
-    def run(self):
+    def begin(self):
         image = cv2.imread(self.file_name)
         cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty(self.file_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
