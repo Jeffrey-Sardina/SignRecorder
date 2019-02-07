@@ -39,10 +39,11 @@ key_tracker = None
 display_timer = None
 recording_timer = None
 
-#Themeing
+#Settings
 backcolor = '#000000'
-ui_element_color = '#555555'
-forecolor = '#ffffff'
+ui_element_color = '#888888'
+forecolor = '#000000'
+allow_override = False
 
 #text
 default_font = 20
@@ -51,7 +52,7 @@ def main():
     init_vars()
     init_logging()
     #find_webcams(10)
-    init_config()
+    load_config()
     init_gui()
 
 def init_vars():
@@ -82,9 +83,8 @@ def find_webcams(search_num):
         pop_up(message)
         raise Exception(message)
 
-def init_config():
-    global settings
-    settings = Settings()
+def load_config():
+    Settings().load_config()
 
 def init_gui():
     global width, height, window, key_tracker
@@ -208,10 +208,7 @@ def write_meta(path, name):
         raise Exception(message)
 
 class Settings():
-    allow_override = False
-
-    def __init__(self):
-        self.load_config()
+    global allow_override
 
     def load_config(self):
         global ui_element_color, backcolor, forecolor
@@ -220,7 +217,7 @@ class Settings():
                 for line in config:
                     key, value = line.split(',', 1)
                     if key == 'allow_override':
-                        self.allow_override = int(value) == 1
+                        allow_override = int(value) == 1
                     elif key == 'backcolor':
                         backcolor = value.strip()
                     elif key == 'forecolor':
