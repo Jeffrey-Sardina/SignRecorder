@@ -33,6 +33,7 @@ video_id = None
 pop_up_window = None
 width = 0
 height = 0
+press_state = True
 
 #timing
 display_timer = None
@@ -123,28 +124,30 @@ def on_key_release(event):
         on_button_exit()
 
 def on_button_space_press_just_started():
-    global video_id
+    global video_id, press_state
     video_id = os.path.basename(stimuli_set[current_stimulus].strip())
     load_stimulus()
+    press_state = False
 
 def on_button_space_press():
-    global recording, video_id
-    if recording:
+    global recording, video_id, press_state
+    if recording and press_state:
         recording = False
         if recording_timer.active():
             recording_timer.end()
         video_id = os.path.basename(stimuli_set[current_stimulus].strip())
         load_stimulus()
+        press_state = False
 
 def on_button_space_release():
-    global video_id, recording, current_stimulus
+    global video_id, recording, current_stimulus, press_state
     recording = True
     recording_timer.begin()
     Recorder(video_id, 30, True).start()
     current_stimulus += 1
+    press_state = True
 
 def load_stimulus():
-    global current_stimulus
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
         display_timer.end()
