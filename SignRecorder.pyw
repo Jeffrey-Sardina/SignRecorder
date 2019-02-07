@@ -34,6 +34,7 @@ pop_up_window = None
 width = 0
 height = 0
 press_state = True
+key_tracker = None
 
 #timing
 display_timer = None
@@ -87,7 +88,7 @@ def init_config():
     settings = Settings()
 
 def init_gui():
-    global width, height, window
+    global width, height, window, key_tracker
 
     #Master window
     window = tk.Tk()
@@ -101,9 +102,14 @@ def init_gui():
     main_frame = MainFrame(window, background = backcolor)
     main_frame.pack(side="top", fill="both", expand=True)
 
+    key_tracker = KeyTracker()
     #input
-    window.bind_all('<KeyPress>', on_key_press)
-    window.bind_all('<KeyRelease>', on_key_release)
+    #window.bind_all('<KeyPress>', on_key_press) #key_tracker.report_key_press)
+    #window.bind_all('<KeyRelease>', on_key_release) #key_tracker.report_key_release)
+
+    window.bind_all('<KeyPress>', key_tracker.report_key_press)
+    window.bind_all('<KeyRelease>', key_tracker.report_key_release)
+    key_tracker.track('space')
     
     #Show window
     window.mainloop()
@@ -346,6 +352,40 @@ class Image_Displayer(threading.Thread):
         if cv2.waitKey(self.time):
             cv2.destroyWindow(self.file_name)
 
+class KeyTracker():
+    key = ''
+    last_press_time = 0
+    last_release_time = 0
+    waiting_to_test_release = False
+
+    def track(self, key):
+        self.key = key
+
+    def is_pressed(self):
+        return time.time() - self.last_press_time < .1
+
+    def report_key_press(self, event):
+        if event.keysym == self.key:
+            if not self.is_pressed():
+                print('press')
+                on_key_press(event)
+            self.last_press_time = time.time()
+
+    def report_key_release(self, event):
+        if event.keysym == self.key:
+            if not self.waiting_to_test_release:
+                timer = threading.Timer(.1, self.report_key_release_callback, args=[event])
+                timer.start()
+                print(time.time())
+    
+    def report_key_release_callback(self, event):
+        print(time.time())
+        print()
+        if not self.is_pressed():
+            print('rel')
+            on_key_release(event)
+        self.last_release_time = time.time()
+            
 class Timer():
     start_time = 0
     end_time = 0
