@@ -33,7 +33,6 @@ video_id = None
 pop_up_window = None
 width = 0
 height = 0
-press_state = True
 key_tracker = None
 
 #timing
@@ -102,11 +101,8 @@ def init_gui():
     main_frame = MainFrame(window, background = backcolor)
     main_frame.pack(side="top", fill="both", expand=True)
 
-    key_tracker = KeyTracker()
     #input
-    #window.bind_all('<KeyPress>', on_key_press) #key_tracker.report_key_press)
-    #window.bind_all('<KeyRelease>', on_key_release) #key_tracker.report_key_release)
-
+    key_tracker = KeyTracker()
     window.bind_all('<KeyPress>', key_tracker.report_key_press)
     window.bind_all('<KeyRelease>', key_tracker.report_key_release)
     key_tracker.track('space')
@@ -130,28 +126,25 @@ def on_key_release(event):
         on_button_exit()
 
 def on_button_space_press_just_started():
-    global video_id, press_state
+    global video_id
     video_id = os.path.basename(stimuli_set[current_stimulus].strip())
     load_stimulus()
-    press_state = False
 
 def on_button_space_press():
-    global recording, video_id, press_state
-    if recording and press_state:
+    global recording, video_id
+    if recording:
         recording = False
         if recording_timer.active():
             recording_timer.end()
         video_id = os.path.basename(stimuli_set[current_stimulus].strip())
         load_stimulus()
-        press_state = False
 
 def on_button_space_release():
-    global video_id, recording, current_stimulus, press_state
+    global video_id, recording, current_stimulus
     recording = True
     recording_timer.begin()
     Recorder(video_id, 30, True).start()
     current_stimulus += 1
-    press_state = True
 
 def load_stimulus():
     stimulus = stimuli_set[current_stimulus].strip()
@@ -356,7 +349,6 @@ class KeyTracker():
     key = ''
     last_press_time = 0
     last_release_time = 0
-    waiting_to_test_release = False
 
     def track(self, key):
         self.key = key
@@ -367,22 +359,16 @@ class KeyTracker():
     def report_key_press(self, event):
         if event.keysym == self.key:
             if not self.is_pressed():
-                print('press')
                 on_key_press(event)
             self.last_press_time = time.time()
 
     def report_key_release(self, event):
         if event.keysym == self.key:
-            if not self.waiting_to_test_release:
-                timer = threading.Timer(.1, self.report_key_release_callback, args=[event])
-                timer.start()
-                print(time.time())
+            timer = threading.Timer(.1, self.report_key_release_callback, args=[event])
+            timer.start()
     
     def report_key_release_callback(self, event):
-        print(time.time())
-        print()
         if not self.is_pressed():
-            print('rel')
             on_key_release(event)
         self.last_release_time = time.time()
             
