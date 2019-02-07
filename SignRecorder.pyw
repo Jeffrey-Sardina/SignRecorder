@@ -23,8 +23,8 @@ video_id = None
 
 #recording
 window = None
-recording = True
-ready_to_reset_recording = True
+recording = False
+just_started = True
 
 #files
 out_dir = '.'
@@ -108,8 +108,13 @@ def init_gui():
     window.mainloop()
 
 def on_key_press(event):
+    global just_started
     if event.keysym == 'space':
-        on_button_space_press()
+        if just_started:
+            on_button_space_press_just_started()
+            just_started = False
+        else:
+            on_button_space_press()
 
 def on_key_release(event):
     if event.keysym == 'space':
@@ -117,24 +122,28 @@ def on_key_release(event):
     elif event.keysym == 'Escape':
         on_button_exit()
 
+def on_button_space_press_just_started():
+    global video_id
+    video_id = os.path.basename(stimuli_set[current_stimulus].strip())
+    load_stimulus()
+
 def on_button_space_press():
-    global recording, video_id, ready_to_reset_recording
-    if recording and ready_to_reset_recording:
+    global recording, video_id
+    if recording:
         recording = False
-        ready_to_reset_recording = False
         if recording_timer.active():
             recording_timer.end()
         video_id = os.path.basename(stimuli_set[current_stimulus].strip())
-        load_next_stimulus()
+        load_stimulus()
 
 def on_button_space_release():
-    global video_id, recording, ready_to_reset_recording
+    global video_id, recording, current_stimulus
     recording = True
-    ready_to_reset_recording = True
     recording_timer.begin()
     Recorder(video_id, 30, True).start()
+    current_stimulus += 1
 
-def load_next_stimulus():
+def load_stimulus():
     global current_stimulus
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
@@ -152,8 +161,6 @@ def load_next_stimulus():
     elif stimulus_type == 'Video':
         display_timer.begin()
         Video_Displayer(stimulus).start()
-
-    current_stimulus += 1
 
 def on_button_exit():
     global recording
@@ -186,7 +193,7 @@ def write_meta(path, name):
         with open(file_name, 'w') as meta:
             print('display_time,' + str(display_timer.timespan), file=meta)
             print('recording_time,' + str(recording_timer.timespan), file=meta)
-            print('tota;_time' + str(display_timer.timespan + recording_timer.timespan), file=meta)
+            print('total_time' + str(display_timer.timespan + recording_timer.timespan), file=meta)
     except Exception as err:
         message = 'Failed to write meta file: ' + file_name
         logger.critical(message + ': ' + str(err))
@@ -346,7 +353,7 @@ class Timer():
     
     def end(self):
         self.end_time = time.time()
-        self.timespan = self.start_time - self.end_time
+        self.timespan = self.end_time - self.start_time
 
     def active(self):
         return self.start_time > self.end_time
