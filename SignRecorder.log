@@ -1,6 +1,1 @@
-INFO - 2019-02-06 21:27:02,945 - Starting log
-INFO - 2019-02-06 21:27:16,320 - Video C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_54_51.mp4 running at fps=30
-INFO - 2019-02-06 21:27:26,018 - Video C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
-INFO - 2019-02-06 21:27:35,442 - Video C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_56_15.mp4 running at fps=30
-INFO - 2019-02-06 21:27:52,102 - Video C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_56_38.mp4 running at fps=30
-CRITICAL - 2019-02-06 21:28:07,112 - Cannot overwrite existing video file: C:/Users/jeffr/Downloads/sample\Microsoft Edge 05_02_2019 23_56_38.mp4.avi
+INFO - 2019-02-06 21:38:59,687 - Starting log
