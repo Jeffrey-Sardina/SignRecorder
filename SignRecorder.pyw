@@ -132,6 +132,7 @@ def on_button_space_press_just_started():
 
 def on_button_space_press():
     global recording, video_id
+    logger.info('on_button_space_press: current_stimulus=' + str(current_stimulus) + ' recording=' + str(recording))
     if recording:
         recording = False
         if recording_timer.active():
@@ -141,12 +142,14 @@ def on_button_space_press():
 
 def on_button_space_release():
     global recording, current_stimulus
+    logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus))
     recording = True
     current_stimulus += 1
     recording_timer.begin()
     Recorder(video_id, 30, True).begin()
 
 def load_stimulus():
+    logger.info('load_stimulus: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
         display_timer.end()
@@ -166,6 +169,7 @@ def load_stimulus():
 
 def on_button_exit():
     global recording
+    logger.log('on_button_exit--exitting program')
     if recording:
         recording = False
     sys.exit()
@@ -190,6 +194,7 @@ def pop_up(message):
     pop_up_window.mainloop()
 
 def write_meta(path, name):
+    logger.info('writing meta file at path=' + path + ' with name=' + name)
     file_name = os.path.join(path, name + '.meta.csv')
     try:
         if os.path.exists(file_name) and not settings.allow_override:
@@ -236,6 +241,7 @@ class Recorder():
     mirror = False
 
     def __init__(self, name, fps, mirror):
+        logger.info('Recorder.__init__: name=' + self.name + ' fps=' + str(self.fps) + ' mirror=' + str(mirror))
         self.name = name
         self.fps = fps
         self.mirror = mirror
@@ -267,6 +273,7 @@ class Recorder():
             pop_up(message)
             raise Exception(message)
     
+        logger.info('Recorder.begin: starting recording loop')
         while web_cam.isOpened():
             # Capture frame-by-frame
             is_reading, frame = web_cam.read()
@@ -286,6 +293,7 @@ class Recorder():
                 break
     
         # When everything done, release the capture
+        logger.info('Recorder.begin: recording ended, releasing resources')
         web_cam.release()
         video_writer.release()
 
@@ -293,12 +301,13 @@ class Video_Displayer():
     file_name = ''
 
     def __init__(self, file_name):
+        logger.info('Video_Displayer.__init__: file_name=' + file_name)
         self.file_name = file_name
 
     def begin(self):
         video_input = cv2.VideoCapture(self.file_name)
         fps = int(video_input.get(cv2.CAP_PROP_FPS))
-        logger.info('Video ' + self.file_name + ' running at fps=' + str(int(fps)))
+        logger.info('Video_Displayer.begin ' + self.file_name + ' running at fps=' + str(int(fps)))
 
         if not video_input.isOpened():
             message = 'Could not open video file for reading'
@@ -315,9 +324,11 @@ class Video_Displayer():
             if is_reading:
                 cv2.imshow(self.file_name, frame)
             else:
+                logger.info('Video_Displayer.begin: display ended naturally')
                 break
 
             if cv2.waitKey(fps) & 0xFF == ord('1'):
+                logger.info('Video_Displayer.begin: display ended by user command')
                 break
         
         video_input.release()
@@ -328,14 +339,17 @@ class Image_Displayer():
     time = 0
 
     def __init__(self, file_name):
+        logger.info('Image_Displayer.__init__ ' + file_name)
         self.file_name = file_name
 
     def begin(self):
         image = cv2.imread(self.file_name)
         cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty(self.file_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        logger.info('Image_Displayer.begin: showing image')
         cv2.imshow(self.file_name, image)
         if cv2.waitKey(self.time):
+            logger.info('Image_Displayer.begin: image done showing, cleaning resources')
             cv2.destroyWindow(self.file_name)
 
 class KeyTracker():
@@ -344,6 +358,7 @@ class KeyTracker():
     last_release_time = 0
 
     def track(self, key):
+        logger.info('KeyTracker.track: key=' + key)
         self.key = key
 
     def is_pressed(self):
@@ -361,6 +376,7 @@ class KeyTracker():
             timer.start()
     
     def report_key_release_callback(self, event):
+        logger.info('KeyTracker.report_key_release_callback: key=' + self.key + ' is released= ' + str((not self.is_pressed())))
         if not self.is_pressed():
             on_key_release(event)
         self.last_release_time = time.time()
@@ -478,6 +494,7 @@ class Page_Create_Experiment(Page):
         self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
 
     def load_files(self):
+        logger.info('Page_Create_Experiment: load_files')
         self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Files' + self.option_selected.get() + ' files')
         display_text = 'Files selected:\n'
         for file_name in self.files:
@@ -488,6 +505,7 @@ class Page_Create_Experiment(Page):
         self.selected_files_info_text.config(state = 'disabled')
 
     def create_experiment(self):
+        logger.info('Page_Create_Experiment: create_experiment')
         experimant_name = filedialog.asksaveasfilename(initialdir = "/", title = "Save file", filetypes = (("experiment files","*.exp"), ("all files","*.*")))
         try:
             with open(experimant_name, 'w') as experiment:
@@ -544,6 +562,7 @@ class Page_Start_Experiment(Page):
 
     def load_dir(self):
         global out_dir
+        logger.info('Page_Start_Experiment: load_dir')
         try:
             out_dir = filedialog.askdirectory(parent = self, initialdir="/", title='Select Save Folder')
         except Exception as err:
@@ -553,6 +572,7 @@ class Page_Start_Experiment(Page):
 
     def load_experiment(self):
         global study_name, stimulus_type, stimuli_set
+        logger.info('Page_Start_Experiment: load_experiment')
         experiment_file = filedialog.askopenfilename(parent=self, initialdir="/", title='Select Experiment')
         try:
             with open(experiment_file, 'r') as experiment:
