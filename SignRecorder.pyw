@@ -109,6 +109,9 @@ def init_gui():
     window.bind_all('<KeyPress>', key_tracker.report_key_press)
     window.bind_all('<KeyRelease>', key_tracker.report_key_release)
     key_tracker.track('space')
+
+    #Exitting
+    window.protocol("WM_DELETE_WINDOW",  on_close)
     
     #Show window
     FixFocus().start()
@@ -142,18 +145,20 @@ def on_button_space_press_just_started():
 def on_button_space_press():
     global recording, video_id
     logger.info('on_button_space_press: current_stimulus=' + str(current_stimulus) + ' recording=' + str(recording))
-    print('press')
     if recording:
         recording = False
         if recording_timer.active():
             recording_timer.end()
-        video_id = os.path.basename(stimuli_set[current_stimulus].strip())
-        load_stimulus()
+        if current_stimulus >= len(stimuli_set):
+            pop_up('All Data has been collected')
+            return
+        else:
+            video_id = os.path.basename(stimuli_set[current_stimulus].strip())
+            load_stimulus()
 
 def on_button_space_release():
     global recording, current_stimulus, keep_displaying
     logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus))
-    print('rel')
     recording = True
     keep_displaying = False
     current_stimulus += 1
@@ -169,12 +174,7 @@ def load_stimulus():
         display_timer.end()
         #write_meta(out_dir, video_id)
 
-    if stimulus_type == 'Text':
-        display_timer.begin()
-        pop_up_window = tk.Tk()
-        text_label = tk.Label(pop_up_window, text = stimulus, font = default_font, justify='left', height = 3, width = 70, background = ui_element_color, foreground = forecolor)
-        text_label.grid(row=0, column=0)
-    elif stimulus_type == 'Image':
+    if stimulus_type == 'Image':
         display_timer.begin()
         Image_Displayer(stimulus).begin()
     elif stimulus_type == 'Video':
@@ -225,6 +225,11 @@ def write_meta(path, name):
         logger.critical(message + ': ' + str(err))
         pop_up(message)
         raise Exception(message)
+
+def on_close():
+     logger.info('Program closing due to user command')
+     window.destroy()
+     sys.exit(0)
 
 class Settings():
     global allow_override
@@ -341,6 +346,7 @@ class Video_Displayer():
         is_reading, frame = self.video_input.read()
 
         if is_reading:
+            #Load the image for the current frame and convert to imagetk
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=img)
@@ -349,50 +355,37 @@ class Video_Displayer():
             if self.video_input.isOpened():
                 self.display.after(self.fps, self.run_frame)
             else:
-                logger.warning('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
+                self.end('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
         else:
-            logger.info('Video_Displayer.run_frame: display ended naturally')
+            self.end('Video_Displayer.run_frame: display ended naturally')
+            
 
-    def end(self):
+    def end(self, message = 'Video_Displayer.run_frame ended'):
+        logger.info(message)
         self.video_input.release()
 
 class Image_Displayer():
     file_name = ''
+    display = None
 
     def __init__(self, file_name):
         logger.info('Image_Displayer.__init__ ' + file_name)
         self.file_name = file_name
 
     def begin(self):
+        self.display = main_frame.page_show_stimuli.display_region
         main_frame.select_show_stimuli()
 
-        # Load a color image
-        img = cv2.imread(self.file_name)
-
-        #Rearrang the color channel
-        b,g,r = cv2.split(img)
-        img = cv2.merge((r,g,b))
-
-        #A root window for displaying objects
-        root = main_frame.page_show_stimuli
-
-        # Convert the Image object into a TkPhoto object
-        im = Image.fromarray(img)
-        imgtk = ImageTk.PhotoImage(image=im) 
+        #Load the image for the current frame and convert to imagetk
+        cv2image = cv2.imread(self.file_name)
+        b,g,r = cv2.split(cv2image)
+        cv2image = cv2.merge((r,g,b))
+        img = Image.fromarray(cv2image)
+        imgtk = ImageTk.PhotoImage(image=img) 
 
         # Put it in the display window
-        tk.Label(root, image=imgtk, borderwidth=0, highlightthickness=0).pack() 
-
-        '''
-        main_frame.select_show_stimuli()
-        image = cv2.imread(self.file_name)
-        
-        logger.info('Image_Displayer.begin: showing image')
-        #cv2.imshow(self.file_name, image)
-        #if cv2.waitKey(0) & 0xFF == ord('e'):
-        #    logger.info('Image_Displayer.begin: image done showing, cleaning resources')
-        #    cv2.destroyWindow(self.file_name)
-        '''
+        self.display.imgtk = imgtk
+        self.display.configure(image=imgtk)
 
 class KeyTracker():
     key = ''
@@ -496,7 +489,7 @@ class Page_Create_Experiment(Page):
         stimulus_text.config(state = 'disabled')
         stimulus_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
-        options = ['Video', 'Image', 'Text']
+        options = ['Video', 'Image']
         default_option = options[0]
         self.option_selected = tk.StringVar(self)
         option_menu = tk.OptionMenu(self, self.option_selected, *options)
@@ -626,15 +619,7 @@ class Page_Start_Experiment(Page):
                         stimulus_type = value.strip()
                     elif key == 'file':
                         study_files.append(value.strip())
-
-            if stimulus_type == 'Text':
-                text_stimuli = []
-                with open(study_files[0]) as data:
-                    for line in data:
-                        text_stimuli.append(line)
-                stimuli_set = text_stimuli
-            else:
-                stimuli_set = study_files
+            stimuli_set = study_files
         except Exception as err:
             message = 'Could not load experiment file'
             logger.error(message + ': ' + str(err))
