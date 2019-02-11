@@ -114,13 +114,12 @@ def init_gui():
     window.protocol("WM_DELETE_WINDOW",  on_close)
     
     #Show window
-    FixFocus().start()
+    threading.Timer(10, refresh).start()
     window.mainloop()
 
-class FixFocus(threading.Thread):
-    def run(self):
-        while True:
-            window.focus_set()
+def refresh():
+    logger.info('Refreshing the display')
+    window.update_idletasks()
 
 def on_key_press(event):
     global just_started
@@ -634,7 +633,7 @@ class Page_Show_Stimuli(Page):
 
     def init_display_region(self):
         self.display_region = tk.Label(self)
-        self.display_region.config(background = "#ffff00")
+        self.display_region.config(background = "#000000")
         self.display_region.grid(row=0, column=0)
         
 class MainFrame(tk.Frame):
