@@ -1,18 +1,46 @@
-INFO - 2019-02-07 16:14:43,108 - Starting log
-INFO - 2019-02-07 16:14:43,213 - KeyTracker.track: key=space
-INFO - 2019-02-07 16:14:44,473 - Page_Start_Experiment: load_experiment
-INFO - 2019-02-07 16:14:47,233 - Page_Start_Experiment: load_dir
-INFO - 2019-02-07 16:14:53,824 - load_stimulus: current_stimulus=0 stimulus type=Video
-INFO - 2019-02-07 16:14:53,824 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_54_51.mp4
-INFO - 2019-02-07 16:14:53,923 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_54_51.mp4 running at fps=30
-INFO - 2019-02-07 16:15:02,249 - Video_Displayer.begin: display ended naturally
-INFO - 2019-02-07 16:15:02,933 - KeyTracker.report_key_release_callback: key=space is released= True
-INFO - 2019-02-07 16:15:02,934 - on_button_space_release: current_stimulus=0
-INFO - 2019-02-07 16:15:02,934 - Recorder.__init__: name= fps=0 mirror=True
-INFO - 2019-02-07 16:15:03,462 - Recorder.begin: starting recording loop
-INFO - 2019-02-07 16:15:04,666 - on_button_space_press: current_stimulus=1 recording=True
-INFO - 2019-02-07 16:15:04,667 - load_stimulus: current_stimulus=1 stimulus type=Video
-INFO - 2019-02-07 16:15:04,667 - writing meta file at path=C:/Users/jeffr/Downloads/sample with name=Microsoft Edge 05_02_2019 23_55_14.mp4
-INFO - 2019-02-07 16:15:04,667 - Recorder.begin: recording ended, releasing resources
-INFO - 2019-02-07 16:15:04,680 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_55_14.mp4
-INFO - 2019-02-07 16:15:04,774 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-02-11 13:32:28,324 - Starting log
+INFO - 2019-02-11 13:32:28,427 - KeyTracker.track: key=space
+INFO - 2019-02-11 13:32:29,818 - Page_Start_Experiment: load_dir
+INFO - 2019-02-11 13:32:33,630 - Page_Start_Experiment: load_experiment
+INFO - 2019-02-11 13:32:36,434 - load_stimulus: current_stimulus=0 stimulus type=Video
+INFO - 2019-02-11 13:32:36,434 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_54_51.mp4
+INFO - 2019-02-11 13:32:36,485 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_54_51.mp4 running at fps=30
+INFO - 2019-02-11 13:32:36,616 - Video_Displayer.run_frame: display ended naturally
+INFO - 2019-02-11 13:32:36,934 - on_button_space_press: current_stimulus=0 recording=False
+INFO - 2019-02-11 13:32:40,331 - KeyTracker.report_key_release_callback: key=space is released= True
+INFO - 2019-02-11 13:32:40,331 - on_button_space_release: current_stimulus=0
+INFO - 2019-02-11 13:32:40,331 - Recorder.__init__: name= fps=0 mirror=True
+INFO - 2019-02-11 13:32:40,609 - Recorder.begin: starting recording loop
+INFO - 2019-02-11 13:32:41,703 - on_button_space_press: current_stimulus=1 recording=True
+INFO - 2019-02-11 13:32:41,704 - load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-02-11 13:32:41,704 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-02-11 13:32:41,708 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-11 13:32:41,761 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-02-11 13:32:41,887 - Video_Displayer.run_frame: display ended naturally
+INFO - 2019-02-11 13:32:42,203 - on_button_space_press: current_stimulus=1 recording=False
+INFO - 2019-02-11 13:32:43,192 - KeyTracker.report_key_release_callback: key=space is released= True
+INFO - 2019-02-11 13:32:43,192 - on_button_space_release: current_stimulus=1
+INFO - 2019-02-11 13:32:43,192 - Recorder.__init__: name= fps=0 mirror=True
+INFO - 2019-02-11 13:32:43,390 - Recorder.begin: starting recording loop
+INFO - 2019-02-11 13:32:44,206 - on_button_space_press: current_stimulus=2 recording=True
+INFO - 2019-02-11 13:32:44,206 - load_stimulus: current_stimulus=2 stimulus type=Video
+INFO - 2019-02-11 13:32:44,206 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_56_15.mp4
+INFO - 2019-02-11 13:32:44,212 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-11 13:32:44,277 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_56_15.mp4 running at fps=30
+INFO - 2019-02-11 13:32:44,403 - Video_Displayer.run_frame: display ended naturally
+INFO - 2019-02-11 13:32:44,706 - on_button_space_press: current_stimulus=2 recording=False
+INFO - 2019-02-11 13:32:45,207 - KeyTracker.report_key_release_callback: key=space is released= True
+INFO - 2019-02-11 13:32:45,207 - on_button_space_release: current_stimulus=2
+INFO - 2019-02-11 13:32:45,207 - Recorder.__init__: name= fps=0 mirror=True
+INFO - 2019-02-11 13:32:45,406 - Recorder.begin: starting recording loop
+INFO - 2019-02-11 13:32:45,856 - on_button_space_press: current_stimulus=3 recording=True
+INFO - 2019-02-11 13:32:45,856 - load_stimulus: current_stimulus=3 stimulus type=Video
+INFO - 2019-02-11 13:32:45,856 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_56_38.mp4
+INFO - 2019-02-11 13:32:45,867 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-11 13:32:45,934 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_56_38.mp4 running at fps=30
+INFO - 2019-02-11 13:32:46,057 - Video_Displayer.run_frame: display ended naturally
+INFO - 2019-02-11 13:32:46,357 - on_button_space_press: current_stimulus=3 recording=False
+INFO - 2019-02-11 13:32:46,705 - KeyTracker.report_key_release_callback: key=space is released= True
+INFO - 2019-02-11 13:32:46,705 - on_button_space_release: current_stimulus=3
+INFO - 2019-02-11 13:32:46,705 - Recorder.__init__: name= fps=0 mirror=True
+INFO - 2019-02-11 13:32:46,907 - Recorder.begin: starting recording loop

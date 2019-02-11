@@ -6,6 +6,7 @@ import sys
 import logging
 import os
 import time
+from PIL import Image, ImageTk
 
 #backend
 logger = None
@@ -23,6 +24,7 @@ current_stimulus = 0
 window = None
 recording = False
 just_started = True
+keep_displaying = True
 
 #files
 out_dir = '.'
@@ -30,6 +32,7 @@ video_path = None
 video_id = None
 
 #tk ui
+main_frame = None
 pop_up_window = None
 width = 0
 height = 0
@@ -87,7 +90,7 @@ def load_config():
     Settings().load_config()
 
 def init_gui():
-    global width, height, window, key_tracker
+    global width, height, window, key_tracker, main_frame
 
     #Master window
     window = tk.Tk()
@@ -108,7 +111,13 @@ def init_gui():
     key_tracker.track('space')
     
     #Show window
+    FixFocus().start()
     window.mainloop()
+
+class FixFocus(threading.Thread):
+    def run(self):
+        while True:
+            window.focus_set()
 
 def on_key_press(event):
     global just_started
@@ -133,6 +142,7 @@ def on_button_space_press_just_started():
 def on_button_space_press():
     global recording, video_id
     logger.info('on_button_space_press: current_stimulus=' + str(current_stimulus) + ' recording=' + str(recording))
+    print('press')
     if recording:
         recording = False
         if recording_timer.active():
@@ -141,19 +151,23 @@ def on_button_space_press():
         load_stimulus()
 
 def on_button_space_release():
-    global recording, current_stimulus
+    global recording, current_stimulus, keep_displaying
     logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus))
+    print('rel')
     recording = True
+    keep_displaying = False
     current_stimulus += 1
     recording_timer.begin()
     Recorder(video_id, 30, True).begin()
 
 def load_stimulus():
+    global keep_displaying
     logger.info('load_stimulus: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
+    keep_displaying = True
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
         display_timer.end()
-        write_meta(out_dir, video_id)
+        #write_meta(out_dir, video_id)
 
     if stimulus_type == 'Text':
         display_timer.begin()
@@ -197,11 +211,11 @@ def write_meta(path, name):
     logger.info('writing meta file at path=' + path + ' with name=' + name)
     file_name = os.path.join(path, name + '.meta.csv')
     try:
-        if os.path.exists(file_name) and not settings.allow_override:
-            message = 'Cannot overwrite existing meta file:\n' + file_name
-            logger.critical(message)
-            pop_up(message)
-            raise Exception(message)
+        if os.path.exists(file_name) and not allow_override:
+            message = 'Cannot overwrite existing meta file: '
+            logger.critical(message + file_name)
+            pop_up(message + '\n' + file_name)
+            raise Exception(message + file_name)
         with open(file_name, 'w') as meta:
             print('display_time,' + str(display_timer.timespan), file=meta)
             print('recording_time,' + str(recording_timer.timespan), file=meta)
@@ -259,11 +273,11 @@ class Recorder():
 
         #create VideoWriter object
         file_name = os.path.join(out_dir, self.name + '.avi')
-        if os.path.exists(file_name) and not settings.allow_override:
-            message = 'Cannot overwrite existing video file:\n' + file_name
-            logger.critical(message)
-            pop_up(message)
-            raise Exception(message)
+        if os.path.exists(file_name) and not allow_override:
+            message = 'Cannot overwrite existing video file: ' 
+            logger.critical(message + file_name)
+            pop_up(message + '\n' + file_name)
+            raise Exception(message + file_name)
         else:
             video_writer= cv2.VideoWriter(file_name, fourcc, self.fps, (width, height))
 
@@ -299,23 +313,31 @@ class Recorder():
 
 class Video_Displayer():
     file_name = ''
+    video_input = None
+    fps = None
+    display = None
 
     def __init__(self, file_name):
         logger.info('Video_Displayer.__init__: file_name=' + file_name)
         self.file_name = file_name
 
     def begin(self):
-        video_input = cv2.VideoCapture(self.file_name)
-        fps = int(video_input.get(cv2.CAP_PROP_FPS))
-        logger.info('Video_Displayer.begin ' + self.file_name + ' running at fps=' + str(int(fps)))
+        self.video_input = cv2.VideoCapture(self.file_name)
+        self.fps = int(self.video_input.get(cv2.CAP_PROP_FPS))
+        self.display = main_frame.page_show_stimuli.display_region
+        logger.info('Video_Displayer.begin ' + self.file_name + ' running at fps=' + str(int(self.fps)))
 
-        if not video_input.isOpened():
+        if not self.video_input.isOpened():
             message = 'Could not open video file for reading'
             logger.warning(message)
             pop_up(message)
             raise Exception(message)
 
-        cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
+        main_frame.select_show_stimuli()
+        self.run_frame()        
+        self.video_input.release()
+
+        '''cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty(self.file_name ,cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         while video_input.isOpened():
             #Get the next frame
@@ -327,30 +349,67 @@ class Video_Displayer():
                 logger.info('Video_Displayer.begin: display ended naturally')
                 break
 
-            if cv2.waitKey(fps) & 0xFF == ord('1'):
+            if cv2.waitKey(fps) & 0xFF == ord('1'): #quit on 1
                 logger.info('Video_Displayer.begin: display ended by user command')
                 break
         
         video_input.release()
-        cv2.destroyWindow(self.file_name)
+        cv2.destroyWindow(self.file_name)'''
+
+    def run_frame(self):
+        #Get the next frame
+        is_reading, frame = self.video_input.read()
+
+        if is_reading:
+            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+            img = Image.fromarray(cv2image)
+            imgtk = ImageTk.PhotoImage(image=img)
+            self.display.imgtk = imgtk
+            self.display.configure(image=imgtk)
+            if self.video_input.isOpened():
+                self.display.after(self.fps, self.run_frame)
+            else:
+                logger.warning('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
+        else:
+            logger.info('Video_Displayer.run_frame: display ended naturally')
 
 class Image_Displayer():
     file_name = ''
-    time = 0
 
     def __init__(self, file_name):
         logger.info('Image_Displayer.__init__ ' + file_name)
         self.file_name = file_name
 
     def begin(self):
+        main_frame.select_show_stimuli()
+
+        # Load a color image
+        img = cv2.imread(self.file_name)
+
+        #Rearrang the color channel
+        b,g,r = cv2.split(img)
+        img = cv2.merge((r,g,b))
+
+        #A root window for displaying objects
+        root = main_frame.page_show_stimuli
+
+        # Convert the Image object into a TkPhoto object
+        im = Image.fromarray(img)
+        imgtk = ImageTk.PhotoImage(image=im) 
+
+        # Put it in the display window
+        tk.Label(root, image=imgtk, borderwidth=0, highlightthickness=0).pack() 
+
+        '''
+        main_frame.select_show_stimuli()
         image = cv2.imread(self.file_name)
-        cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty(self.file_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        
         logger.info('Image_Displayer.begin: showing image')
-        cv2.imshow(self.file_name, image)
-        if cv2.waitKey(self.time):
-            logger.info('Image_Displayer.begin: image done showing, cleaning resources')
-            cv2.destroyWindow(self.file_name)
+        #cv2.imshow(self.file_name, image)
+        #if cv2.waitKey(0) & 0xFF == ord('e'):
+        #    logger.info('Image_Displayer.begin: image done showing, cleaning resources')
+        #    cv2.destroyWindow(self.file_name)
+        '''
 
 class KeyTracker():
     key = ''
@@ -598,10 +657,23 @@ class Page_Start_Experiment(Page):
             logger.error(message + ': ' + str(err))
             pop_up(message)
 
+class Page_Show_Stimuli(Page):
+    display_region = None
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.init_display_region()
+
+    def init_display_region(self):
+        self.display_region = tk.Label(self)
+        self.display_region.config(background = "#ffff00")
+        self.display_region.grid(row=0, column=0)
+        
 class MainFrame(tk.Frame):
     page_main_menu =  None
     page_create_experiment = None
     page_start_experiment = None
+    page_show_stimuli = None
 
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
@@ -611,6 +683,7 @@ class MainFrame(tk.Frame):
         self.page_main_menu = Page_Main_Menu(self, width = width, height = height, background = backcolor)
         self.page_create_experiment = Page_Create_Experiment(self, width = width, height = height, background = backcolor)
         self.page_start_experiment = Page_Start_Experiment(self, width = width, height = height, background = backcolor)
+        self.page_show_stimuli = Page_Show_Stimuli(self, width = width, height = height, background = backcolor)
 
         #Page Navigation
         buttonframe = tk.Frame(self, background = backcolor)
@@ -622,16 +695,19 @@ class MainFrame(tk.Frame):
         self.page_main_menu.place(in_=container)
         self.page_create_experiment.place(in_=container)
         self.page_start_experiment.place(in_=container)
+        self.page_show_stimuli.place(in_=container)
 
         #Place buttons in the top-level button frame
         b1 = tk.Button(buttonframe, text="Main Menu", font=default_font, command=self.select_main_menu, background = ui_element_color, foreground = forecolor)
         b2 = tk.Button(buttonframe, text="Create Experiment", font=default_font, command=self.select_create_experiment, background = ui_element_color, foreground = forecolor)
         b3 = tk.Button(buttonframe, text="Start Experiment", font=default_font, command=self.select_start_experiment, background = ui_element_color, foreground = forecolor)
+        b4 = tk.Button(buttonframe, text="Show Stimuli", font=default_font, command=self.select_show_stimuli, background = ui_element_color, foreground = forecolor)
 
         #Pack buttons
         b1.pack(side="left")
         b2.pack(side="left")
         b3.pack(side="left")
+        b4.pack(side="left")
 
         #Show the main menu
         self.page_main_menu.show()
@@ -640,15 +716,24 @@ class MainFrame(tk.Frame):
         self.page_main_menu.lift()
         self.page_create_experiment.lower()
         self.page_start_experiment.lower()
+        self.page_show_stimuli.lower()
 
     def select_create_experiment(self):
         self.page_create_experiment.lift()
         self.page_main_menu.lower()
         self.page_start_experiment.lower()
+        self.page_show_stimuli.lower()
 
     def select_start_experiment(self):
         self.page_start_experiment.lift()
         self.page_create_experiment.lower()
         self.page_main_menu.lower()
+        self.page_show_stimuli.lower()
+
+    def select_show_stimuli(self):
+        self.page_show_stimuli.lift()
+        self.page_main_menu.lower()
+        self.page_create_experiment.lower()
+        self.page_start_experiment.lower()
 
 main()
