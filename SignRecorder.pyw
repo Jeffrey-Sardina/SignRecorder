@@ -335,26 +335,6 @@ class Video_Displayer():
 
         main_frame.select_show_stimuli()
         self.run_frame()        
-        self.video_input.release()
-
-        '''cv2.namedWindow(self.file_name, cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty(self.file_name ,cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        while video_input.isOpened():
-            #Get the next frame
-            is_reading, frame = video_input.read()
-
-            if is_reading:
-                cv2.imshow(self.file_name, frame)
-            else:
-                logger.info('Video_Displayer.begin: display ended naturally')
-                break
-
-            if cv2.waitKey(fps) & 0xFF == ord('1'): #quit on 1
-                logger.info('Video_Displayer.begin: display ended by user command')
-                break
-        
-        video_input.release()
-        cv2.destroyWindow(self.file_name)'''
 
     def run_frame(self):
         #Get the next frame
@@ -372,6 +352,9 @@ class Video_Displayer():
                 logger.warning('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
         else:
             logger.info('Video_Displayer.run_frame: display ended naturally')
+
+    def end(self):
+        self.video_input.release()
 
 class Image_Displayer():
     file_name = ''
