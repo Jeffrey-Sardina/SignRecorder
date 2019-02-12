@@ -1,20 +1,15 @@
 Lab meeting TODO
-    Name files after image and subject id
-        Subject id entry box for each subject
     Make a mac .sh / dbl click thing
-        Better: for v0.2stable, release an official installer
+    For v0.2stable, release an official installer
     Fix bugs
 
 Important
     waitKey stuff
 
-General
-    Allow search for more webcams after Start
-
 Long-term / potential
     Allow merging of videos
     Config file recovery if deleted
+    Allow search for more webcams after Start
 
 Timing
-    I want to be on v. 0.2beta (with video, image, or text stimuli and .meta records of timing) by Monday, Feb. 11
     Not sure when I will have v0.2stable

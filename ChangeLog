@@ -1,3 +1,28 @@
+v. 0.2alpha to 0.2beta
+    User-side:
+        Added a 'Show Stimuli' page in which stimuli are showed within the same window
+        Many, many bug fixes that make this version semi-stable, and much more reliable than the alpha
+        Program stops properly on finishing recording data
+        Program quits and closes resources properly on exit (but not force-quit)
+        Files chosen can been seen once they are selected in the Create Experiment page
+        Support for text-stimuli removed due to lack of anticipated use
+        Updated the UI to be based on text boxes, not labels
+        Made UI element sizing more consistent
+        Removed the UI bug in which non-current pages were still rendered
+    
+    Dev-side:
+        Code cleaned up, with unneeded references removed
+        Addition dependency PIL (Pillow) added to do rendering of images in tkinter
+        Significantly better logging that is actually helpful,in finding errors
+        webcam_num now defaults to 1, which makes much more sense
+        Webcam searching never run, but the function remains
+
+    Notes:
+        Being a beta, this program is fairly stable but still not ready for complete use in a production environment.
+        Testing has been light and mostly for non-edge cases
+        Timeline for 0.2stable unknown as of yet, as it largely depends on the number of bugs found in testing the beta
+        config.csv, if corrupted, should not stop the program from running
+
 v. 0.1 to 0.2alpha
     User-side:
         Complete UI revamp. The program now runs maximized and uses a more clear dark theme
@@ -7,7 +32,7 @@ v. 0.1 to 0.2alpha
     
     Dev-side:
         Removes a whole host of code: the Subject class and the old UI loading methods
-        Moved to a OO class-based approach for the UI
+        Moved to an OO class-based approach for the UI
         Code is now a .pyw so it does not create a terminal
         Settings class added, which links to and loads from a config file
         Logging to disk through the python logging utilities implemented

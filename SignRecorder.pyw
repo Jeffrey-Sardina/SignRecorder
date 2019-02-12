@@ -19,9 +19,12 @@ study_files = []
 stimulus_type = ''
 stimuli_set = []
 current_stimulus = 0
+subject_id_entry_box = None
+subject_id = 'No_Subject_ID'
 
 #recording
 window = None
+recorder = None
 recording = False
 just_started = True
 keep_displaying = True
@@ -132,8 +135,10 @@ def on_key_release(event):
         on_button_space_release()
 
 def on_button_space_press_just_started():
-    global video_id
+    global video_id,subject_id
     video_id = os.path.basename(stimuli_set[current_stimulus].strip())
+    subject_id = subject_id_entry_box.get().strip()
+    logger.info('Starting session for ' + subject_id + ' for the first time ' + str(just_started))
     load_stimulus()
 
 def on_button_space_press():
@@ -144,27 +149,29 @@ def on_button_space_press():
         if recording_timer.active():
             recording_timer.end()
         if current_stimulus >= len(stimuli_set):
-            pop_up('All Data has been collected')
+            pop_up('All data for ' + subject_id + ' has been collected')
             return
         else:
             video_id = os.path.basename(stimuli_set[current_stimulus].strip())
             load_stimulus()
 
 def on_button_space_release():
-    global recording, current_stimulus, keep_displaying
-    if can_start_recording:
+    global recording, current_stimulus, keep_displaying, recorder
+    if can_start_recording and current_stimulus < len(stimuli_set):
         logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus) + '; recording starting')
         recording = True
         keep_displaying = False
         current_stimulus += 1
         recording_timer.begin()
-        Recorder(video_id, 30, True).begin()
+        recorder = Recorder(subject_id + '-' + video_id, 30, True)
+        recorder.begin()
     else:
         logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
 
 def load_stimulus():
     global keep_displaying
     logger.info('load_stimulus: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
+
     keep_displaying = True
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
@@ -177,6 +184,17 @@ def load_stimulus():
     elif stimulus_type == 'Video':
         display_timer.begin()
         Video_Displayer(stimulus).begin()
+
+def reset_for_next_subject():
+    global subject_id, just_started, current_stimulus, keep_displaying, can_start_recording
+    logger.info('Resetting the environment for the next subject')
+
+    current_stimulus = 0
+    keep_displaying = True
+    can_start_recording = True
+    subject_id = 'No_Subject_ID'
+    just_started = True
+    subject_id_entry_box.delete(0, last='end')
 
 def pop_up(message):
     global pop_up_window
@@ -217,9 +235,13 @@ def write_meta(path, name):
         raise Exception(message)
 
 def on_close():
-     logger.info('Program closing due to user command')
-     window.destroy()
-     sys.exit(0)
+    logger.info('Program closing due to user command')
+    window.destroy()
+    try:
+        recorder.end()
+    except:
+        pass
+    sys.exit(0)
 
 class Settings():
     def load_config(self):
@@ -246,6 +268,8 @@ class Recorder():
     name = ''
     fps = 0
     mirror = False
+    web_cam = None
+    video_writer = None
 
     def __init__(self, name, fps, mirror):
         logger.info('Recorder.__init__: name=' + self.name + ' fps=' + str(self.fps) + ' mirror=' + str(mirror))
@@ -255,11 +279,11 @@ class Recorder():
 
     def begin(self):
         # Capturing video from webcam:
-        web_cam = cv2.VideoCapture(0)
+        self.web_cam = cv2.VideoCapture(0)
 
         #get width and height of reading frame
-        width = int(web_cam.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(web_cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        width = int(self.web_cam.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.web_cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
         # Define the codec and 
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
@@ -272,26 +296,23 @@ class Recorder():
             pop_up(message + '\n' + file_name)
             raise Exception(message + file_name)
         else:
-            video_writer= cv2.VideoWriter(file_name, fourcc, self.fps, (width, height))
+            self.video_writer= cv2.VideoWriter(file_name, fourcc, self.fps, (width, height))
 
-        if not web_cam.isOpened():
+        if not self.web_cam.isOpened():
             message = 'Could not open webcam'
             logger.warning(message)
             pop_up(message)
             raise Exception(message)
     
         logger.info('Recorder.begin: starting recording loop')
-        while web_cam.isOpened():
+        while self.web_cam.isOpened():
             # Capture frame-by-frame
-            is_reading, frame = web_cam.read()
+            is_reading, frame = self.web_cam.read()
     
             if is_reading and recording:
                 if self.mirror:
-                    # Mirror the video if needed
                     frame = cv2.flip(frame, 1)
-
-                # Saves for video
-                video_writer.write(frame)
+                self.video_writer.write(frame)
             else:
                 break
     
@@ -299,10 +320,12 @@ class Recorder():
                 on_button_space_release()
                 break
     
-        # When everything done, release the capture
+        self.end()
+    
+    def end(self):
         logger.info('Recorder.begin: recording ended, releasing resources')
-        web_cam.release()
-        video_writer.release()
+        self.web_cam.release()
+        self.video_writer.release()
 
 class Video_Displayer():
     file_name = ''
@@ -441,11 +464,11 @@ class Page_Main_Menu(Page):
         padding_y = 10
 
         about_text = '''
-        Version: 0.1
+        Version: 0.2beta
         Developer: Jeffrey Sardina 
 
         SignRecorder is a simple program for recording and saving 
-        video '.avi' files for sign language data collection and
+        video files for sign language data collection and
         experiments. It is currently hosted on GitHub
         (https://github.com/Jeffrey-Sardina/SignRecorder)
         as an open-source project.
@@ -551,6 +574,7 @@ class Page_Start_Experiment(Page):
         self.init_elements()
 
     def init_elements(self):
+        global subject_id_entry_box
         padding_x = 10
         padding_y = 10
 
@@ -574,6 +598,16 @@ class Page_Start_Experiment(Page):
         select_file_button = tk.Button(self, text ="Choose output folder", command = self.load_dir, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
+        entry_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
+        entry_text.insert(tk.INSERT, '\nEnter subject ID')
+        entry_text.tag_configure("center", justify='center')
+        entry_text.tag_add("center", 1.0, "end")
+        entry_text.config(state = 'disabled')
+        entry_text.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+
+        subject_id_entry_box = tk.Entry(self, font = default_font, background = ui_element_color, foreground = forecolor)
+        subject_id_entry_box.grid(row=5, column=0, padx=padding_x, pady=padding_y)
+
         how_to_string = '''
         When you are ready to begin the experiment, press and hold the space bar. 
         You will then see the image prompt.
@@ -586,7 +620,7 @@ class Page_Start_Experiment(Page):
         how_to_text = tk.Text(self, font = default_font, height = 9, width = 70, background = ui_element_color, foreground = forecolor)
         how_to_text.insert(tk.INSERT, how_to_string)
         how_to_text.config(state = 'disabled')
-        how_to_text.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+        how_to_text.grid(row=6, column=0, padx=padding_x, pady=padding_y)
 
     def load_dir(self):
         global out_dir
@@ -686,6 +720,8 @@ class MainFrame(tk.Frame):
         self.page_show_stimuli.lower()
 
     def select_start_experiment(self):
+        if current_stimulus >= len(stimuli_set):
+            reset_for_next_subject()
         self.page_start_experiment.lift()
         self.page_create_experiment.lower()
         self.page_main_menu.lower()
