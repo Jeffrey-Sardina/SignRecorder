@@ -115,7 +115,7 @@ def init_gui():
     window.protocol("WM_DELETE_WINDOW",  on_close)
     
     #Show window
-    threading.Timer(2, refresh).start()
+    threading.Timer(2, refresh).start() #Remove later
     window.mainloop()
 
 def refresh():
@@ -424,24 +424,33 @@ class KeyTracker():
     key = ''
     last_press_time = 0
     last_release_time = 0
+    last_event_was_press = False
 
     def track(self, key):
         logger.info('KeyTracker.track: key=' + key)
         self.key = key
 
     def is_pressed(self):
-        return time.time() - self.last_press_time < .1
+        return time.time() - self.last_press_time < .1 #In seconds
 
     def report_key_press(self, event):
-        if event.keysym == self.key:
+        if not self.last_event_was_press and event.keysym == self.key:
+            self.last_event_was_press = True
             if not self.is_pressed():
+                print(time.time())
+                print(self.last_press_time)
+                print(time.time() - self.last_press_time)
+                print()
                 logger.info('KeyTracker.report_key_press: valid keypress detected: key=' + self.key)
+                self.last_press_time = time.time()
                 on_key_press(event)
-            self.last_press_time = time.time()
+            else:
+                self.last_press_time = time.time()
 
     def report_key_release(self, event):
-        if event.keysym == self.key:
-            timer = threading.Timer(.1, self.report_key_release_callback, args=[event])
+        if self.last_event_was_press and event.keysym == self.key:
+            self.last_event_was_press = False
+            timer = threading.Timer(.1, self.report_key_release_callback, args=[event]) #In seconds
             timer.start()
     
     def report_key_release_callback(self, event):
