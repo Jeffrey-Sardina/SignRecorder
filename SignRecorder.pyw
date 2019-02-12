@@ -13,7 +13,7 @@ logger = None
 settings = None
 
 #experiment data
-webcam_num = 0
+webcam_num = 1
 study_name = ''
 study_files = []
 stimulus_type = ''
@@ -25,6 +25,7 @@ window = None
 recording = False
 just_started = True
 keep_displaying = True
+can_start_recording = True
 
 #files
 out_dir = '.'
@@ -52,10 +53,9 @@ allow_override = False
 default_font = 20
 
 def main():
+    load_config()
     init_vars()
     init_logging()
-    #find_webcams(10)
-    load_config()
     init_gui()
 
 def init_vars():
@@ -75,16 +75,13 @@ def init_logging():
 
 def find_webcams(search_num):
     global webcam_num
+    webcam_num = 0
     for i in range(search_num):
         webcam_i = cv2.VideoCapture(i)
         if webcam_i.isOpened():
             webcam_num += 1
             webcam_i.release()
-    if webcam_num == 0:
-        message = 'No cameras found for recording!'
-        logger.critical(message)
-        pop_up(message)
-        raise Exception(message)
+        logger.info(str(webcam_num) + ' webcams found for recording')
 
 def load_config():
     Settings().load_config()
@@ -114,7 +111,7 @@ def init_gui():
     window.protocol("WM_DELETE_WINDOW",  on_close)
     
     #Show window
-    threading.Timer(10, refresh).start()
+    threading.Timer(2, refresh).start()
     window.mainloop()
 
 def refresh():
@@ -133,8 +130,6 @@ def on_key_press(event):
 def on_key_release(event):
     if event.keysym == 'space':
         on_button_space_release()
-    elif event.keysym == 'Escape':
-        on_button_exit()
 
 def on_button_space_press_just_started():
     global video_id
@@ -157,12 +152,15 @@ def on_button_space_press():
 
 def on_button_space_release():
     global recording, current_stimulus, keep_displaying
-    logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus))
-    recording = True
-    keep_displaying = False
-    current_stimulus += 1
-    recording_timer.begin()
-    Recorder(video_id, 30, True).begin()
+    if can_start_recording:
+        logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus) + '; recording starting')
+        recording = True
+        keep_displaying = False
+        current_stimulus += 1
+        recording_timer.begin()
+        Recorder(video_id, 30, True).begin()
+    else:
+        logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
 
 def load_stimulus():
     global keep_displaying
@@ -179,13 +177,6 @@ def load_stimulus():
     elif stimulus_type == 'Video':
         display_timer.begin()
         Video_Displayer(stimulus).begin()
-
-def on_button_exit():
-    global recording
-    logger.log('on_button_exit--exitting program')
-    if recording:
-        recording = False
-    sys.exit()
 
 def pop_up(message):
     global pop_up_window
@@ -231,10 +222,8 @@ def on_close():
      sys.exit(0)
 
 class Settings():
-    global allow_override
-
     def load_config(self):
-        global ui_element_color, backcolor, forecolor
+        global ui_element_color, backcolor, forecolor, allow_override
         try:
             with open('config.csv', 'r') as config:
                 for line in config:
@@ -326,6 +315,8 @@ class Video_Displayer():
         self.file_name = file_name
 
     def begin(self):
+        global can_start_recording
+        can_start_recording = False
         self.video_input = cv2.VideoCapture(self.file_name)
         self.fps = int(self.video_input.get(cv2.CAP_PROP_FPS))
         self.display = main_frame.page_show_stimuli.display_region
@@ -341,6 +332,7 @@ class Video_Displayer():
         self.run_frame()        
 
     def run_frame(self):
+        global can_start_recording
         #Get the next frame
         is_reading, frame = self.video_input.read()
 
@@ -355,8 +347,10 @@ class Video_Displayer():
                 self.display.after(self.fps, self.run_frame)
             else:
                 self.end('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
+                can_start_recording = True
         else:
             self.end('Video_Displayer.run_frame: display ended naturally')
+            can_start_recording = True
             
 
     def end(self, message = 'Video_Displayer.run_frame ended'):

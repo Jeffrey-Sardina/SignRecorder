@@ -1,4 +1,33 @@
-INFO - 2019-02-11 15:43:00,512 - Starting log
-INFO - 2019-02-11 15:43:00,615 - KeyTracker.track: key=space
-INFO - 2019-02-11 15:43:07,838 - Program closing due to user command
-INFO - 2019-02-11 15:43:10,616 - Refreshing the display
+INFO - 2019-02-11 22:11:49,052 - Starting log
+INFO - 2019-02-11 22:11:49,141 - KeyTracker.track: key=space
+INFO - 2019-02-11 22:11:51,141 - Refreshing the display
+INFO - 2019-02-11 22:11:55,262 - Page_Start_Experiment: load_dir
+INFO - 2019-02-11 22:12:00,906 - Page_Start_Experiment: load_experiment
+INFO - 2019-02-11 22:12:04,901 - load_stimulus: current_stimulus=0 stimulus type=Video
+INFO - 2019-02-11 22:12:04,901 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_54_51.mp4
+INFO - 2019-02-11 22:12:04,952 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_54_51.mp4 running at fps=30
+INFO - 2019-02-11 22:12:05,429 - on_button_space_press: current_stimulus=0 recording=False
+INFO - 2019-02-11 22:12:14,249 - on_button_space_press: current_stimulus=0 recording=False
+INFO - 2019-02-11 22:12:27,504 - KeyTracker.report_key_release_callback: key=space is released= True
+WARNING - 2019-02-11 22:12:27,504 - on_button_space_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-02-11 22:12:28,447 - Video_Displayer.run_frame: display ended naturally
+INFO - 2019-02-11 22:12:30,798 - on_button_space_press: current_stimulus=0 recording=False
+INFO - 2019-02-11 22:12:31,298 - on_button_space_press: current_stimulus=0 recording=False
+INFO - 2019-02-11 22:12:31,502 - KeyTracker.report_key_release_callback: key=space is released= True
+INFO - 2019-02-11 22:12:31,502 - on_button_space_release: current_stimulus=0; recording starting
+INFO - 2019-02-11 22:12:31,502 - Recorder.__init__: name= fps=0 mirror=True
+INFO - 2019-02-11 22:12:31,821 - Recorder.begin: starting recording loop
+INFO - 2019-02-11 22:12:33,805 - on_button_space_press: current_stimulus=1 recording=True
+INFO - 2019-02-11 22:12:33,805 - load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-02-11 22:12:33,805 - Video_Displayer.__init__: file_name=C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-02-11 22:12:33,850 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-11 22:12:33,855 - Video_Displayer.begin C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_videos/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-02-11 22:12:34,336 - on_button_space_press: current_stimulus=1 recording=False
+INFO - 2019-02-11 22:12:35,198 - on_button_space_press: current_stimulus=1 recording=False
+INFO - 2019-02-11 22:12:40,808 - on_button_space_press: current_stimulus=1 recording=False
+INFO - 2019-02-11 22:12:58,129 - Video_Displayer.run_frame: display ended naturally
+INFO - 2019-02-11 22:12:59,832 - KeyTracker.report_key_release_callback: key=space is released= True
+INFO - 2019-02-11 22:12:59,833 - on_button_space_release: current_stimulus=1; recording starting
+INFO - 2019-02-11 22:12:59,833 - Recorder.__init__: name= fps=0 mirror=True
+INFO - 2019-02-11 22:13:00,019 - Recorder.begin: starting recording loop
+INFO - 2019-02-11 22:13:04,254 - Program closing due to user command
