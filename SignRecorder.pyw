@@ -431,16 +431,13 @@ class KeyTracker():
         self.key = key
 
     def is_pressed(self):
-        return time.time() - self.last_press_time < .1 #In seconds
+        press_time_test = time.time() - self.last_press_time < .1 #In seconds
+        return press_time_test
 
     def report_key_press(self, event):
         if not self.last_event_was_press and event.keysym == self.key:
             self.last_event_was_press = True
             if not self.is_pressed():
-                print(time.time())
-                print(self.last_press_time)
-                print(time.time() - self.last_press_time)
-                print()
                 logger.info('KeyTracker.report_key_press: valid keypress detected: key=' + self.key)
                 self.last_press_time = time.time()
                 on_key_press(event)
@@ -450,6 +447,7 @@ class KeyTracker():
     def report_key_release(self, event):
         if self.last_event_was_press and event.keysym == self.key:
             self.last_event_was_press = False
+            self.last_release_time = time.time()
             timer = threading.Timer(.1, self.report_key_release_callback, args=[event]) #In seconds
             timer.start()
     
@@ -457,7 +455,6 @@ class KeyTracker():
         logger.info('KeyTracker.report_key_release_callback: key=' + self.key + ', is released= ' + str((not self.is_pressed())))
         if not self.is_pressed():
             on_key_release(event)
-        self.last_release_time = time.time()
             
 class Timer():
     start_time = 0
