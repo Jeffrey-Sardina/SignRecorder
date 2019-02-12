@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-#Not sure of this works right now (v.0.2alpha)
+#Not sure of this works right now (v.0.2beta)
 
 from distutils.core import setup
 
 setup(name='Sign Recorder',
-      version='0.1',
-      description='Program for displaying prompts and recording video responses for experiments',
+      version='0.2beta',
+      description='Program for displaying prompts and recording video responses for sign language experiments',
       author='Jeffrey Sardina',
-      packages=['opencv-python'],
+      packages=['opencv-python', 'Pillow'],
      )

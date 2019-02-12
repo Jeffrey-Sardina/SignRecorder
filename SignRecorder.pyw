@@ -33,7 +33,8 @@ can_start_recording = True
 #files
 out_dir = '.'
 video_path = None
-video_id = None
+video_id = ''
+last_video_id = None
 
 #tk ui
 main_frame = None
@@ -135,14 +136,15 @@ def on_key_release(event):
         on_button_space_release()
 
 def on_button_space_press_just_started():
-    global video_id,subject_id
+    global video_id, subject_id, last_video_id
+    last_video_id = video_id
     video_id = os.path.basename(stimuli_set[current_stimulus].strip())
     subject_id = subject_id_entry_box.get().strip()
     logger.info('Starting session for ' + subject_id + ' for the first time ' + str(just_started))
-    load_stimulus()
+    load_stimulus_just_started()
 
 def on_button_space_press():
-    global recording, video_id
+    global recording, video_id, last_video_id
     logger.info('on_button_space_press: current_stimulus=' + str(current_stimulus) + ' recording=' + str(recording))
     if recording:
         recording = False
@@ -152,6 +154,7 @@ def on_button_space_press():
             pop_up('All data for ' + subject_id + ' has been collected')
             return
         else:
+            last_video_id = video_id
             video_id = os.path.basename(stimuli_set[current_stimulus].strip())
             load_stimulus()
 
@@ -168,6 +171,20 @@ def on_button_space_release():
     else:
         logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
 
+def load_stimulus_just_started():
+    global keep_displaying
+    logger.info('load_stimulus_just_started: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
+
+    keep_displaying = True
+    stimulus = stimuli_set[current_stimulus].strip()
+
+    if stimulus_type == 'Image':
+        display_timer.begin()
+        Image_Displayer(stimulus).begin()
+    elif stimulus_type == 'Video':
+        display_timer.begin()
+        Video_Displayer(stimulus).begin()
+
 def load_stimulus():
     global keep_displaying
     logger.info('load_stimulus: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
@@ -176,7 +193,7 @@ def load_stimulus():
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
         display_timer.end()
-        #write_meta(out_dir, video_id)
+        write_meta(out_dir, subject_id + '-' + last_video_id)
 
     if stimulus_type == 'Image':
         display_timer.begin()
@@ -227,7 +244,7 @@ def write_meta(path, name):
         with open(file_name, 'w') as meta:
             print('display_time,' + str(display_timer.timespan), file=meta)
             print('recording_time,' + str(recording_timer.timespan), file=meta)
-            print('total_time' + str(display_timer.timespan + recording_timer.timespan), file=meta)
+            print('total_time,' + str(display_timer.timespan + recording_timer.timespan), file=meta)
     except Exception as err:
         message = 'Failed to write meta file: ' + file_name
         logger.critical(message + ': ' + str(err))
