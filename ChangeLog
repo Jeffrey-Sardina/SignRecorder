@@ -1,3 +1,9 @@
+v. 0.2beta to 0.2.1beta
+    User-side:
+        Updates how the space bar works for recording based on specifications
+        Now runs reliably on MAC the way it does on windows
+        Minor bug fixes and test file edits
+
 v. 0.2alpha to 0.2beta
     User-side:
         Added a 'Show Stimuli' page in which stimuli are showed within the same window

@@ -1,7 +1,7 @@
 Lab meeting TODO
     Make a mac .sh / dbl click thing
-    For v0.2stable, release an official installer
     Fix bugs
+    option for randomize in create exp. (later)
 
 Important
     waitKey stuff
@@ -10,6 +10,7 @@ Long-term / potential
     Allow merging of videos
     Config file recovery if deleted
     Allow search for more webcams after Start
+    Official installer
 
 Timing
     Not sure when I will have v0.2stable

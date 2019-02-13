@@ -193,7 +193,7 @@ def load_stimulus():
     stimulus = stimuli_set[current_stimulus].strip()
     if display_timer.active():
         display_timer.end()
-        write_meta(out_dir, subject_id + '-' + last_video_id)
+        #write_meta(out_dir, subject_id + '-' + last_video_id)
 
     if stimulus_type == 'Image':
         display_timer.begin()
@@ -205,6 +205,12 @@ def load_stimulus():
 def reset_for_next_subject():
     global subject_id, just_started, current_stimulus, keep_displaying, can_start_recording
     logger.info('Resetting the environment for the next subject')
+
+    key_tracker.last_press_time = 0
+    key_tracker.last_release_time = 0
+    key_tracker.last_release_callback_time = 0
+    key_tracker.first_callback_call = True
+    key_tracker.last_event_was_press = False
 
     current_stimulus = 0
     keep_displaying = True
@@ -424,6 +430,8 @@ class KeyTracker():
     key = ''
     last_press_time = 0
     last_release_time = 0
+    last_release_callback_time = 0
+    first_callback_call = True
     last_event_was_press = False
 
     def track(self, key):
@@ -448,13 +456,19 @@ class KeyTracker():
         if self.last_event_was_press and event.keysym == self.key:
             self.last_event_was_press = False
             self.last_release_time = time.time()
-            timer = threading.Timer(.1, self.report_key_release_callback, args=[event]) #In seconds
+            timer = threading.Timer(.5, self.report_key_release_callback, args=[event]) #In seconds
+            print(time.time())
             timer.start()
     
     def report_key_release_callback(self, event):
-        logger.info('KeyTracker.report_key_release_callback: key=' + self.key + ', is released= ' + str((not self.is_pressed())))
-        if not self.is_pressed():
-            on_key_release(event)
+        if self.first_callback_call:
+            self.last_release_callback_time = time.time()
+            self.first_callback_call = False
+        if time.time() - self.last_release_callback_time > .5:
+            self.last_release_callback_time = time.time()
+            logger.info('KeyTracker.report_key_release_callback: key=' + self.key + ', is released= ' + str((not self.is_pressed())))
+            if not self.is_pressed():
+                on_key_release(event)
             
 class Timer():
     start_time = 0
@@ -488,7 +502,7 @@ class Page_Main_Menu(Page):
         padding_y = 10
 
         about_text = '''
-        Version: 0.2beta
+        Version: 0.2.1beta
         Developer: Jeffrey Sardina 
 
         SignRecorder is a simple program for recording and saving 
@@ -633,13 +647,13 @@ class Page_Start_Experiment(Page):
         subject_id_entry_box.grid(row=5, column=0, padx=padding_x, pady=padding_y)
 
         how_to_string = '''
-        When you are ready to begin the experiment, press and hold the space bar. 
-        You will then see the image prompt.
+        When you are ready to begin the experiment, press the space bar. 
 
-        Once you are ready to sign based on what you see, remove your hands from 
-        the space bar and begin to sign.
+        Once you are ready to sign based on what you see, press the space
+        bar to start recording.
 
-        Once you are done signing, place your hands back on space and hold to advance.
+        Once you are done signing, press the space bar again. You will then
+        see the next prompt and the program will begin recording.
         '''
         how_to_text = tk.Text(self, font = default_font, height = 9, width = 70, background = ui_element_color, foreground = forecolor)
         how_to_text.insert(tk.INSERT, how_to_string)
