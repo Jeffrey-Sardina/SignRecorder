@@ -266,6 +266,33 @@ def on_close():
         pass
     sys.exit(0)
 
+def get_proper_resize_dimensions_for_fullscreen(img):
+    #Get image dimensions
+    original_width = img.width
+    original_height = img.height
+
+    #Get the scalars that transform the original size into the fullscreen dize
+    width_scalar = width / original_width
+    height_scalar = height / original_height
+
+    #Our goal is to make the image as largs as possible without goinf over the screen size.
+    #We also do not want to loose out aspect ratio. So let's see whether using the width_scalar
+    #   or the height_scalar does that best
+    width_based_scaling_height = original_height * width_scalar
+    width_based_scaling_valid = True
+    if width_based_scaling_height > height:
+        width_based_scaling_valid = False
+
+    height_based_scaling_width = original_width * height_scalar
+    height_based_scaling_valid = True
+    if height_based_scaling_width > width:
+        height_based_scaling_valid = False
+
+    if width_based_scaling_valid and not height_based_scaling_valid:
+        return width, width_based_scaling_height
+    else:
+        return height_based_scaling_width, height
+
 class Settings():
     def load_config(self):
         global ui_element_color, backcolor, forecolor, allow_override
@@ -386,6 +413,8 @@ class Video_Displayer():
             #Load the image for the current frame and convert to imagetk
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
             img = Image.fromarray(cv2image)
+            img_width, img_height = get_proper_resize_dimensions_for_fullscreen(img)
+            img = img.resize((int(img_width), int(img_height)))
             imgtk = ImageTk.PhotoImage(image=img)
             self.display.imgtk = imgtk
             self.display.configure(image=imgtk)
@@ -420,6 +449,8 @@ class Image_Displayer():
         b,g,r = cv2.split(cv2image)
         cv2image = cv2.merge((r,g,b))
         img = Image.fromarray(cv2image)
+        img_width, img_height = get_proper_resize_dimensions_for_fullscreen(img)
+        img = img.resize((int(img_width), int(img_height)))
         imgtk = ImageTk.PhotoImage(image=img) 
 
         # Put it in the display window
@@ -457,7 +488,6 @@ class KeyTracker():
             self.last_event_was_press = False
             self.last_release_time = time.time()
             timer = threading.Timer(.5, self.report_key_release_callback, args=[event]) #In seconds
-            print(time.time())
             timer.start()
     
     def report_key_release_callback(self, event):
@@ -707,6 +737,8 @@ class MainFrame(tk.Frame):
     page_create_experiment = None
     page_start_experiment = None
     page_show_stimuli = None
+    buttonframe = None
+    top_bar_buttons = []
 
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
@@ -719,9 +751,9 @@ class MainFrame(tk.Frame):
         self.page_show_stimuli = Page_Show_Stimuli(self, width = width, height = height, background = backcolor)
 
         #Page Navigation
-        buttonframe = tk.Frame(self, background = backcolor)
+        self.buttonframe = tk.Frame(self, background = backcolor)
         container = tk.Frame(self, background = backcolor)
-        buttonframe.pack(side="top", fill="x", expand=False)
+        self.buttonframe.pack(side="top", fill="x", expand=False)
         container.pack(side="top", fill="both", expand=True)
 
         #Place pages in the container frame
@@ -731,33 +763,34 @@ class MainFrame(tk.Frame):
         self.page_show_stimuli.place(in_=container)
 
         #Place buttons in the top-level button frame
-        b1 = tk.Button(buttonframe, text="Main Menu", font=default_font, command=self.select_main_menu, background = ui_element_color, foreground = forecolor)
-        b2 = tk.Button(buttonframe, text="Create Experiment", font=default_font, command=self.select_create_experiment, background = ui_element_color, foreground = forecolor)
-        b3 = tk.Button(buttonframe, text="Start Experiment", font=default_font, command=self.select_start_experiment, background = ui_element_color, foreground = forecolor)
-        b4 = tk.Button(buttonframe, text="Show Stimuli", font=default_font, command=self.select_show_stimuli, background = ui_element_color, foreground = forecolor)
+        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Main Menu", font=default_font, command=self.select_main_menu, background = ui_element_color, foreground = forecolor))
+        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Create Experiment", font=default_font, command=self.select_create_experiment, background = ui_element_color, foreground = forecolor))
+        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Start Experiment", font=default_font, command=self.select_start_experiment, background = ui_element_color, foreground = forecolor))
+        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Show Stimuli", font=default_font, command=self.select_show_stimuli, background = ui_element_color, foreground = forecolor))
 
         #Pack buttons
-        b1.pack(side="left")
-        b2.pack(side="left")
-        b3.pack(side="left")
-        b4.pack(side="left")
+        for button in self.top_bar_buttons:
+            button.pack(side="left")
 
         #Show the main menu
         self.page_main_menu.show()
 
     def select_main_menu(self):
+        self.set_fullscreen_exclusive(False)
         self.page_main_menu.lift()
         self.page_create_experiment.lower()
         self.page_start_experiment.lower()
         self.page_show_stimuli.lower()
 
     def select_create_experiment(self):
+        self.set_fullscreen_exclusive(False)
         self.page_create_experiment.lift()
         self.page_main_menu.lower()
         self.page_start_experiment.lower()
         self.page_show_stimuli.lower()
 
     def select_start_experiment(self):
+        self.set_fullscreen_exclusive(False)
         if current_stimulus >= len(stimuli_set):
             reset_for_next_subject()
         self.page_start_experiment.lift()
@@ -766,9 +799,13 @@ class MainFrame(tk.Frame):
         self.page_show_stimuli.lower()
 
     def select_show_stimuli(self):
+        self.set_fullscreen_exclusive(True)
         self.page_show_stimuli.lift()
         self.page_main_menu.lower()
         self.page_create_experiment.lower()
         self.page_start_experiment.lower()
+
+    def set_fullscreen_exclusive(self, fullscreen_exclusive):
+        window.attributes('-fullscreen', fullscreen_exclusive)
 
 main()
