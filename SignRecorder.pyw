@@ -166,7 +166,7 @@ def on_button_space_release():
         keep_displaying = False
         current_stimulus += 1
         recording_timer.begin()
-        recorder = Recorder(subject_id + '-' + video_id, 30, True)
+        recorder = Recorder(subject_id + '-' + video_id, True)
         recorder.begin()
     else:
         logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
@@ -316,20 +316,19 @@ class Settings():
 
 class Recorder():
     name = ''
-    fps = 0
     mirror = False
     web_cam = None
     video_writer = None
 
-    def __init__(self, name, fps, mirror):
-        logger.info('Recorder.__init__: name=' + self.name + ' fps=' + str(self.fps) + ' mirror=' + str(mirror))
+    def __init__(self, name, mirror):
+        logger.info('Recorder.__init__: name=' + self.name + ' mirror=' + str(mirror))
         self.name = name
-        self.fps = fps
         self.mirror = mirror
 
     def begin(self):
         # Capturing video from webcam:
         self.web_cam = cv2.VideoCapture(0)
+        fps = self.web_cam.get(cv2.CAP_PROP_FPS)
 
         #get width and height of reading frame
         width = int(self.web_cam.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -346,7 +345,7 @@ class Recorder():
             pop_up(message + '\n' + file_name)
             raise Exception(message + file_name)
         else:
-            self.video_writer= cv2.VideoWriter(file_name, fourcc, self.fps, (width, height))
+            self.video_writer = cv2.VideoWriter(file_name, fourcc, fps, (width, height))
 
         if not self.web_cam.isOpened():
             message = 'Could not open webcam'
