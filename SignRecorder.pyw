@@ -8,6 +8,9 @@ import os
 import time
 from PIL import Image, ImageTk
 
+'''
+Program data global variables
+'''
 #backend
 logger = None
 settings = None
@@ -57,17 +60,79 @@ allow_override = False
 default_font = 20
 
 def main():
+    '''
+    First method called in this thread of program execution.
+    Runs through a servies of initialization steps and then loads the gui.
+    Once the gui is loaded, the gui takes over control of program execution from there onwards.
+    '''
+
     load_config()
     init_vars()
     init_logging()
     init_gui()
 
+def load_config():
+    '''
+    Loads the user settings from the config.csv file. If the file is not pressent or is corrputed, it will use default values
+    and write a new config file, overwritting the old one if it is present.
+    '''
+
+    global ui_element_color, backcolor, forecolor, allow_override
+    try:
+        with open('config.csv', 'r') as config:
+            for line in config:
+                key, value = line.split(',', 1)
+                if key == 'allow_override':
+                    allow_override = int(value) == 1
+                elif key == 'backcolor':
+                    backcolor = value.strip()
+                elif key == 'forecolor':
+                    forecolor = value.strip()
+                elif key == 'ui_element_color':
+                    ui_element_color = value.strip()
+    except Exception as err:
+        message = 'Could not read config file'
+        logger.error(message + ': ' + str(err))
+        write_config_file()
+
+def write_config_file():
+    '''
+    This method should only be called if the config file is corrupted or missing. It re-writes the config data and replaces all
+    data with the default values, or the last loaded non-corrupt data value if such a data value is present.
+
+    If this operations fails, the program will continue to run, but no config file will be generated.
+    '''
+
+    try:
+        with open('config.csv', 'w') as config:
+            print('allow_override,' + str(allow_override), file=config)
+            print('backcolor,' + backcolor, file=config)
+            print('forecolor,' + forecolor, file=config)
+            print('ui_element_color,' + ui_element_color, file=config)
+    except Exception as err:
+        message = 'Attempt to recover config file failed: Could not write new config file' 
+        logger.critical(message + ': ' + str(err))
+        pop_up(message)
+
 def init_vars():
+    '''
+    Initializes object variables from imports
+    '''
+
     global display_timer, recording_timer
     display_timer = Timer()
     recording_timer = Timer()
 
 def init_logging():
+    '''
+    Initializes the loggins system. The logging system is intended to allow the program to save data about each run to disk,
+    and the logger itself will re-write any existing logs each time so as to conserve space and avoid cluttering the running
+    directory with files. This method also triggers the first log write.
+
+    Most methods in this program trigger a log call. For simplicity, the calls to logging are not mentioned in the method
+    descriptions in general.
+    '''
+
     global logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -78,6 +143,16 @@ def init_logging():
     logger.info('Starting log')
 
 def find_webcams(search_num):
+    '''
+    Searches to see how many webcams are attactched to the current system. This is done by attempting to open each webcam from
+    number 0 (the default webcam) to number search_num, which is given to the method. If the webcam opens, then the program knows
+    it has found a wewbcam; if not, the webcam either cannot be accessed by the program or is not present. All opened webcams are
+    closed after searching, and not webcam inpout is recorded at this step.
+
+    Parameters:
+        search_num: The number of webcams for which to search
+    '''
+
     global webcam_num
     webcam_num = 0
     for i in range(search_num):
@@ -87,10 +162,17 @@ def find_webcams(search_num):
             webcam_i.release()
         logger.info(str(webcam_num) + ' webcams found for recording')
 
-def load_config():
-    Settings().load_config()
-
 def init_gui():
+    '''
+    Initializes the gui. The gui is created in a maximized state and takes over main-thread program execution. Note that all gui
+    operations should remain on the main thread, except where the gui allows (suchs as in triggered events). This method also sets
+    up the key_tracker to manage keypress events and attempt to authenticate them (since some OS's will trigger a key press and / 
+    or release repeatedly when a key is help down).
+
+    The gui also maps the default close event (~the red X) to an ooperations that cleans up the program state properly. This
+    should help to prevent memory leaks on an unexpected closure.
+    '''
+
     global width, height, window, key_tracker, main_frame
 
     #Master window
@@ -115,14 +197,17 @@ def init_gui():
     window.protocol("WM_DELETE_WINDOW",  on_close)
     
     #Show window
-    threading.Timer(2, refresh).start() #Remove later
     window.mainloop()
 
-def refresh():
-    logger.info('Refreshing the display')
-    window.update_idletasks()
-
 def on_key_press(event):
+    '''
+    Called whenever a key press event is detected. This method should not be linked to key press events directly; the use of the
+    KeyTracker class is necessary to authenticate key presses as valid before attempting to respond to them.
+
+    If this program has just started, the program runs a different method to respond to the key press event to manage the yet
+    un-initialized variables.
+    '''
+
     global just_started
     if event.keysym == 'space':
         if just_started:
@@ -132,10 +217,20 @@ def on_key_press(event):
             on_button_space_press()
 
 def on_key_release(event):
+    '''
+    Called whenever a key release event is detected. This method should not be linked to key release events directly; the use 
+    of the KeyTracker class is necessary to authenticate key releases as valid before attempting to respond to them.
+    '''
     if event.keysym == 'space':
         on_button_space_release()
 
 def on_button_space_press_just_started():
+    '''
+    This method should be called the first time each subject first does an authenticated space press. It creates their session and 
+    transfers to the stimulus viewing screen. THe stimulus will be displayed there but recording will not begin tunil the next 
+    authenticated space press is detected.
+    '''
+
     global video_id, subject_id, last_video_id
     last_video_id = video_id
     video_id = os.path.basename(stimuli_set[current_stimulus].strip())
@@ -144,6 +239,14 @@ def on_button_space_press_just_started():
     load_stimulus_just_started()
 
 def on_button_space_press():
+    '''
+    This method should be called every time space is pressed (if that press has been authenticated), except the first. It proceeds
+    to the next stimulus and will begin recording, ending the current stimulus and recording. It also ends the recording_timer if 
+    it was running, and updates program state tracking variables to refect the current state of the progam.
+
+    If there are mno more stimuli to run, the program displays a pop-up message stating that data collection is complete.
+    '''
+
     global recording, video_id, last_video_id
     logger.info('on_button_space_press: current_stimulus=' + str(current_stimulus) + ' recording=' + str(recording))
     if recording:
@@ -159,6 +262,11 @@ def on_button_space_press():
             load_stimulus()
 
 def on_button_space_release():
+    '''
+    This method should be called when space is released (if that release has been authenticated). It begins recording and starts
+    the recording timer. It also updates program state tracking variables to refect the current state of the progam.
+    '''
+
     global recording, current_stimulus, keep_displaying, recorder
     if can_start_recording and current_stimulus < len(stimuli_set):
         logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus) + '; recording starting')
@@ -172,6 +280,11 @@ def on_button_space_release():
         logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
 
 def load_stimulus_just_started():
+    '''
+    Loads and displays the first stimulis for the current subject. It also starts the display timer, which measures the time that
+    a stimulus is displayed before signing.
+    '''
+
     global keep_displaying
     logger.info('load_stimulus_just_started: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
 
@@ -186,6 +299,14 @@ def load_stimulus_just_started():
         Video_Displayer(stimulus).begin()
 
 def load_stimulus():
+    '''
+    Loads and displays the next stimulis for the current subject, but should not be used for the first stimulus of a subjecct.
+    It resets the display timer, which measures the time that a stimulus is displayed before signing.
+
+    Later, it will also write timer output to a meta file with the same name as the output file. Timer data it not yet verified
+    though, so it is not ready for use.
+    '''
+
     global keep_displaying
     logger.info('load_stimulus: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
 
@@ -203,6 +324,10 @@ def load_stimulus():
         Video_Displayer(stimulus).begin()
 
 def reset_for_next_subject():
+    '''
+    
+    '''
+
     global subject_id, just_started, current_stimulus, keep_displaying, can_start_recording
     logger.info('Resetting the environment for the next subject')
 
@@ -220,6 +345,10 @@ def reset_for_next_subject():
     subject_id_entry_box.delete(0, last='end')
 
 def pop_up(message):
+    '''
+    
+    '''
+
     global pop_up_window
     padding_x = 10
     padding_y = 10
@@ -239,6 +368,10 @@ def pop_up(message):
     pop_up_window.mainloop()
 
 def write_meta(path, name):
+    '''
+    
+    '''
+
     logger.info('writing meta file at path=' + path + ' with name=' + name)
     file_name = os.path.join(path, name + '.meta.csv')
     try:
@@ -258,6 +391,10 @@ def write_meta(path, name):
         raise Exception(message)
 
 def on_close():
+    '''
+    
+    '''
+
     logger.info('Program closing due to user command')
     window.destroy()
     try:
@@ -267,6 +404,10 @@ def on_close():
     sys.exit(0)
 
 def get_proper_resize_dimensions_for_fullscreen(img):
+    '''
+    
+    '''
+
     #Get image dimensions
     original_width = img.width
     original_height = img.height
@@ -293,39 +434,30 @@ def get_proper_resize_dimensions_for_fullscreen(img):
     else:
         return height_based_scaling_width, height
 
-class Settings():
-    def load_config(self):
-        global ui_element_color, backcolor, forecolor, allow_override
-        try:
-            with open('config.csv', 'r') as config:
-                for line in config:
-                    key, value = line.split(',', 1)
-                    if key == 'allow_override':
-                        allow_override = int(value) == 1
-                    elif key == 'backcolor':
-                        backcolor = value.strip()
-                    elif key == 'forecolor':
-                        forecolor = value.strip()
-                    elif key == 'ui_element_color':
-                        ui_element_color = value.strip()
-        except Exception as err:
-            message = 'Could not read config file'
-            logger.error(message + ': ' + str(err))
-            pop_up(message)
-            raise
-
 class Recorder():
+    '''
+    
+    '''
+
     name = ''
     mirror = False
     web_cam = None
     video_writer = None
 
     def __init__(self, name, mirror):
+        '''
+    
+        '''
+
         logger.info('Recorder.__init__: name=' + self.name + ' mirror=' + str(mirror))
         self.name = name
         self.mirror = mirror
 
     def begin(self):
+        '''
+    
+        '''
+
         # Capturing video from webcam:
         self.web_cam = cv2.VideoCapture(0)
         fps = self.web_cam.get(cv2.CAP_PROP_FPS)
@@ -372,6 +504,10 @@ class Recorder():
         self.end()
     
     def end(self):
+        '''
+    
+        '''
+
         logger.info('Recorder.begin: recording ended, releasing resources')
         self.web_cam.release()
         self.video_writer.release()
@@ -807,4 +943,8 @@ class MainFrame(tk.Frame):
     def set_fullscreen_exclusive(self, fullscreen_exclusive):
         window.attributes('-fullscreen', fullscreen_exclusive)
 
-main()
+try:
+    main()
+except Exception as e:
+    print('Something bad happened ' + str(e))
+    on_close()
