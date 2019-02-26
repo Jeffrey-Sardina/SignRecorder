@@ -2,6 +2,7 @@ import cv2
 import tkinter as tk
 from tkinter import filedialog
 import threading
+import traceback
 import sys
 import logging
 import os
@@ -59,6 +60,9 @@ allow_override = False
 #text
 default_font = 20
 
+'''
+Core program methods
+'''
 def main():
     '''
     First method called in this thread of program execution.
@@ -185,6 +189,7 @@ def init_gui():
 
     #Main Frame in window
     main_frame = MainFrame(window, background = backcolor)
+    main_frame.prepare_display()
     main_frame.pack(side="top", fill="both", expand=True)
 
     #input
@@ -254,8 +259,9 @@ def on_button_space_press():
         if recording_timer.active():
             recording_timer.end()
         if current_stimulus >= len(stimuli_set):
+            main_frame.select_start_experiment()
             pop_up('All data for ' + subject_id + ' has been collected')
-            return
+            reset_for_next_subject()
         else:
             last_video_id = video_id
             video_id = os.path.basename(stimuli_set[current_stimulus].strip())
@@ -346,7 +352,8 @@ def reset_for_next_subject():
 
 def pop_up(message):
     '''
-    
+    Creates a pop-up window to display a message. Please only call this method for important errors such as files that fail
+    to load--each pop up will take focue from the main window and thus disrupt the user.
     '''
 
     global pop_up_window
@@ -354,7 +361,7 @@ def pop_up(message):
     padding_y = 10
 
     pop_up_window = tk.Tk()
-    pop_up_window.wm_title('Error Loading File')
+    pop_up_window.wm_title('Message')
     pop_up_window.config(background=backcolor)
 
     pop_up_text = tk.Text(pop_up_window, font = default_font, height = 5, width = 70, background = ui_element_color, foreground = forecolor)
@@ -369,7 +376,11 @@ def pop_up(message):
 
 def write_meta(path, name):
     '''
-    
+    Writes out a meta-file that contains metadata about the recorded video. The data is:
+        stimulus_name: the name of the file used as a stimulus for this recording
+        display_time: the amount of time the stimulus was displayed before recording
+        recording_time: the time length of the recording
+        total_time: the total time for this step of the experiment, = display_time + recording_time
     '''
 
     logger.info('writing meta file at path=' + path + ' with name=' + name)
@@ -381,6 +392,7 @@ def write_meta(path, name):
             pop_up(message + '\n' + file_name)
             raise Exception(message + file_name)
         with open(file_name, 'w') as meta:
+            print('stimulus_name,' + file_name)
             print('display_time,' + str(display_timer.timespan), file=meta)
             print('recording_time,' + str(recording_timer.timespan), file=meta)
             print('total_time,' + str(display_timer.timespan + recording_timer.timespan), file=meta)
@@ -392,7 +404,8 @@ def write_meta(path, name):
 
 def on_close():
     '''
-    
+    Handles properly closing the program and its spawned resources. As much as possible, all close events should be routed to
+    this method rather than immediately calling an exit function.
     '''
 
     logger.info('Program closing due to user command')
@@ -405,7 +418,8 @@ def on_close():
 
 def get_proper_resize_dimensions_for_fullscreen(img):
     '''
-    
+    This method gets the largest-area resize of an image to be displayed on a fullscreen display without allowing any of the
+    image to overflow off-screen. It maintains the image aspect ratio.
     '''
 
     #Get image dimensions
@@ -434,9 +448,12 @@ def get_proper_resize_dimensions_for_fullscreen(img):
     else:
         return height_based_scaling_width, height
 
+'''
+Data and user-input classes
+'''
 class Recorder():
     '''
-    
+    This class handles all recording using the webcam, and writes recrodings to disk.
     '''
 
     name = ''
@@ -446,7 +463,9 @@ class Recorder():
 
     def __init__(self, name, mirror):
         '''
-    
+        Initializes the Recorder. Parameters:
+            name: The name to five to the recording file
+            mirror: Whether the recording should be mirrored when saved to disk
         '''
 
         logger.info('Recorder.__init__: name=' + self.name + ' mirror=' + str(mirror))
@@ -455,7 +474,8 @@ class Recorder():
 
     def begin(self):
         '''
-    
+        Begins recording from the webcam. The recording will continue untill end is called, or until 1 is pressed.
+        Note that pressing 1 to quit should be used for debug purposes only
         '''
 
         # Capturing video from webcam:
@@ -505,7 +525,7 @@ class Recorder():
     
     def end(self):
         '''
-    
+        Ends the recording and releases resources.
         '''
 
         logger.info('Recorder.begin: recording ended, releasing resources')
@@ -650,10 +670,36 @@ class Timer():
     def active(self):
         return self.start_time > self.end_time
 
+
+'''
+UI classes and layout management
+'''
+
+def arrange_header_in(page):
+    button_frame = page.button_frame
+    top_bar_buttons = []
+    #Place buttons in the top-level button frame
+    top_bar_buttons.append(tk.Button(button_frame, text="Main Menu", font=default_font, command=main_frame.select_main_menu, background = ui_element_color, foreground = forecolor))
+    top_bar_buttons.append(tk.Button(button_frame, text="Create Experiment", font=default_font, command=main_frame.select_create_experiment, background = ui_element_color, foreground = forecolor))
+    top_bar_buttons.append(tk.Button(button_frame, text="Start Experiment", font=default_font, command=main_frame.select_start_experiment, background = ui_element_color, foreground = forecolor))
+    top_bar_buttons.append(tk.Button(button_frame, text="Show Stimuli", font=default_font, command=main_frame.select_show_stimuli, background = ui_element_color, foreground = forecolor))
+
+    #Pack buttons
+    col = 0
+    for button in top_bar_buttons:
+        button.grid(row=0, column=col, pady=10)
+        col += 1
+
+    button_frame.grid(row=0, column=0)
+
 class Page(tk.Frame):
+    button_frame = None
+
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.config(background = backcolor)
+        self.button_frame = tk.Frame(self, background = backcolor)
+
     def show(self):
         self.lift()
 
@@ -682,10 +728,12 @@ class Page_Main_Menu(Page):
         made an experiemnt, save it so that you can load it later.
         '''
 
+        arrange_header_in(self)
+
         file_text = tk.Text(self, font = default_font, height = 15, width = 70, background = ui_element_color, foreground = forecolor)
         file_text.insert(tk.INSERT, about_text)
         file_text.config(state = 'disabled')
-        file_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        file_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
 class Page_Create_Experiment(Page):
     files = []
@@ -698,6 +746,8 @@ class Page_Create_Experiment(Page):
         self.init_elements()
         
     def init_elements(self):
+        arrange_header_in(self)
+
         padding_x = 10
         padding_y = 10
 
@@ -706,7 +756,7 @@ class Page_Create_Experiment(Page):
         stimulus_text.tag_configure("center", justify='center')
         stimulus_text.tag_add("center", 1.0, "end")
         stimulus_text.config(state = 'disabled')
-        stimulus_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        stimulus_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
         options = ['Video', 'Image']
         default_option = options[0]
@@ -714,7 +764,7 @@ class Page_Create_Experiment(Page):
         option_menu = tk.OptionMenu(self, self.option_selected, *options)
         self.option_selected.set(default_option)
         option_menu.config(background = ui_element_color, foreground = forecolor, height = 3, width = 30, font = default_font)
-        option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+        option_menu.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
         filestring = '''
         Please Select the files to use for stimuli. These will be used during the experiment.
@@ -727,20 +777,20 @@ class Page_Create_Experiment(Page):
         select_text.tag_configure("center", justify='center')
         select_text.tag_add("center", 1.0, "end")
         select_text.config(state = 'disabled')
-        select_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        select_text.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
         select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+        select_files_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
         file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         file_text.insert(tk.INSERT, '\nOnce you are done, press create experiment to save an experiment file')
         file_text.tag_configure("center", justify='center')
         file_text.tag_add("center", 1.0, "end")
         file_text.config(state = 'disabled')
-        file_text.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+        file_text.grid(row=5, column=0, padx=padding_x, pady=padding_y)
 
         select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        select_files_button.grid(row=5, column=0, padx=padding_x, pady=padding_y)
+        select_files_button.grid(row=6, column=0, padx=padding_x, pady=padding_y)
 
         self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = ui_element_color, foreground = forecolor)
         self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
@@ -778,6 +828,9 @@ class Page_Start_Experiment(Page):
 
     def init_elements(self):
         global subject_id_entry_box
+
+        arrange_header_in(self)
+
         padding_x = 10
         padding_y = 10
 
@@ -786,30 +839,30 @@ class Page_Start_Experiment(Page):
         file_text.tag_configure("center", justify='center')
         file_text.tag_add("center", 1.0, "end")
         file_text.config(state = 'disabled')
-        file_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        file_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
         select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        select_file_button.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+        select_file_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
         dir_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         dir_text.insert(tk.INSERT, '\nSelect a folder in which to save the output')
         dir_text.tag_configure("center", justify='center')
         dir_text.tag_add("center", 1.0, "end")
         dir_text.config(state = 'disabled')
-        dir_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        dir_text.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
         select_file_button = tk.Button(self, text ="Choose output folder", command = self.load_dir, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
-        select_file_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+        select_file_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
         entry_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         entry_text.insert(tk.INSERT, '\nEnter subject ID')
         entry_text.tag_configure("center", justify='center')
         entry_text.tag_add("center", 1.0, "end")
         entry_text.config(state = 'disabled')
-        entry_text.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+        entry_text.grid(row=5, column=0, padx=padding_x, pady=padding_y)
 
         subject_id_entry_box = tk.Entry(self, font = default_font, background = ui_element_color, foreground = forecolor)
-        subject_id_entry_box.grid(row=5, column=0, padx=padding_x, pady=padding_y)
+        subject_id_entry_box.grid(row=6, column=0, padx=padding_x, pady=padding_y)
 
         how_to_string = '''
         When you are ready to begin the experiment, press the space bar. 
@@ -823,7 +876,7 @@ class Page_Start_Experiment(Page):
         how_to_text = tk.Text(self, font = default_font, height = 9, width = 70, background = ui_element_color, foreground = forecolor)
         how_to_text.insert(tk.INSERT, how_to_string)
         how_to_text.config(state = 'disabled')
-        how_to_text.grid(row=6, column=0, padx=padding_x, pady=padding_y)
+        how_to_text.grid(row=7, column=0, padx=padding_x, pady=padding_y)
 
     def load_dir(self):
         global out_dir
@@ -872,23 +925,21 @@ class MainFrame(tk.Frame):
     page_create_experiment = None
     page_start_experiment = None
     page_show_stimuli = None
-    buttonframe = None
-    top_bar_buttons = []
 
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
+        self.buttonframe = tk.Frame(main_frame, background = backcolor)
         self.config(background = backcolor)
 
+    def prepare_display(self):
         #Pages
         self.page_main_menu = Page_Main_Menu(self, width = width, height = height, background = backcolor)
         self.page_create_experiment = Page_Create_Experiment(self, width = width, height = height, background = backcolor)
         self.page_start_experiment = Page_Start_Experiment(self, width = width, height = height, background = backcolor)
         self.page_show_stimuli = Page_Show_Stimuli(self, width = width, height = height, background = backcolor)
 
-        #Page Navigation
-        self.buttonframe = tk.Frame(self, background = backcolor)
+        #Container
         container = tk.Frame(self, background = backcolor)
-        self.buttonframe.pack(side="top", fill="x", expand=False)
         container.pack(side="top", fill="both", expand=True)
 
         #Place pages in the container frame
@@ -896,16 +947,6 @@ class MainFrame(tk.Frame):
         self.page_create_experiment.place(in_=container)
         self.page_start_experiment.place(in_=container)
         self.page_show_stimuli.place(in_=container)
-
-        #Place buttons in the top-level button frame
-        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Main Menu", font=default_font, command=self.select_main_menu, background = ui_element_color, foreground = forecolor))
-        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Create Experiment", font=default_font, command=self.select_create_experiment, background = ui_element_color, foreground = forecolor))
-        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Start Experiment", font=default_font, command=self.select_start_experiment, background = ui_element_color, foreground = forecolor))
-        self.top_bar_buttons.append(tk.Button(self.buttonframe, text="Show Stimuli", font=default_font, command=self.select_show_stimuli, background = ui_element_color, foreground = forecolor))
-
-        #Pack buttons
-        for button in self.top_bar_buttons:
-            button.pack(side="left")
 
         #Show the main menu
         self.page_main_menu.show()
@@ -926,8 +967,6 @@ class MainFrame(tk.Frame):
 
     def select_start_experiment(self):
         self.set_fullscreen_exclusive(False)
-        if current_stimulus >= len(stimuli_set):
-            reset_for_next_subject()
         self.page_start_experiment.lift()
         self.page_create_experiment.lower()
         self.page_main_menu.lower()
@@ -943,8 +982,15 @@ class MainFrame(tk.Frame):
     def set_fullscreen_exclusive(self, fullscreen_exclusive):
         window.attributes('-fullscreen', fullscreen_exclusive)
 
+'''
+This code starts program execition. The entire program is run in a try-except statement so that, should any error occur:
+    The program can write out the error to the command line
+    The program can still run on on_close() function to try to clean up all resources
+'''
+
 try:
     main()
 except Exception as e:
-    print('Something bad happened ' + str(e))
+    trace = traceback.format_exc()
+    print('Something bad happened ' + str(e) + '\n' + str(trace))
     on_close()
