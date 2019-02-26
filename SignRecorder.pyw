@@ -682,9 +682,8 @@ def arrange_header_in(page):
     top_bar_buttons.append(tk.Button(button_frame, text="Main Menu", font=default_font, command=main_frame.select_main_menu, background = ui_element_color, foreground = forecolor))
     top_bar_buttons.append(tk.Button(button_frame, text="Create Experiment", font=default_font, command=main_frame.select_create_experiment, background = ui_element_color, foreground = forecolor))
     top_bar_buttons.append(tk.Button(button_frame, text="Start Experiment", font=default_font, command=main_frame.select_start_experiment, background = ui_element_color, foreground = forecolor))
-    top_bar_buttons.append(tk.Button(button_frame, text="Show Stimuli", font=default_font, command=main_frame.select_show_stimuli, background = ui_element_color, foreground = forecolor))
-
-    #Pack buttons
+    
+    #Grid buttons
     col = 0
     for button in top_bar_buttons:
         button.grid(row=0, column=col, pady=10)

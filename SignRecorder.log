@@ -1,57 +1,57 @@
-INFO - 2019-02-25 17:04:21,419 - Starting log
-INFO - 2019-02-25 17:04:21,531 - KeyTracker.track: key=space
-INFO - 2019-02-25 17:04:22,766 - Page_Start_Experiment: load_experiment
-INFO - 2019-02-25 17:04:26,145 - Page_Start_Experiment: load_dir
-INFO - 2019-02-25 17:04:30,574 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-02-25 17:04:30,574 - Starting session for ten for the first time True
-INFO - 2019-02-25 17:04:30,574 - load_stimulus_just_started: current_stimulus=0 stimulus type=Image
-INFO - 2019-02-25 17:04:30,574 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Blue.png
-INFO - 2019-02-25 17:04:31,981 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-02-25 17:04:31,981 - on_button_space_press: current_stimulus=0 recording=False
-INFO - 2019-02-25 17:04:32,574 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-02-25 17:04:32,574 - on_button_space_release: current_stimulus=0; recording starting
-INFO - 2019-02-25 17:04:32,574 - Recorder.__init__: name= mirror=True
-INFO - 2019-02-25 17:04:33,338 - Recorder.begin: starting recording loop
-INFO - 2019-02-25 17:04:34,688 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-02-25 17:04:34,688 - on_button_space_press: current_stimulus=1 recording=True
-INFO - 2019-02-25 17:04:34,688 - load_stimulus: current_stimulus=1 stimulus type=Image
-INFO - 2019-02-25 17:04:34,688 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Pink.png
-INFO - 2019-02-25 17:04:34,696 - Recorder.begin: recording ended, releasing resources
-INFO - 2019-02-25 17:04:35,273 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-02-25 17:04:35,273 - on_button_space_release: current_stimulus=1; recording starting
-INFO - 2019-02-25 17:04:35,273 - Recorder.__init__: name= mirror=True
-INFO - 2019-02-25 17:04:35,832 - Recorder.begin: starting recording loop
-INFO - 2019-02-25 17:04:36,811 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-02-25 17:04:36,811 - on_button_space_press: current_stimulus=2 recording=True
-INFO - 2019-02-25 17:04:36,811 - load_stimulus: current_stimulus=2 stimulus type=Image
-INFO - 2019-02-25 17:04:36,811 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Red.png
-INFO - 2019-02-25 17:04:36,923 - Recorder.begin: recording ended, releasing resources
-INFO - 2019-02-25 17:04:37,418 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-02-25 17:04:37,418 - on_button_space_release: current_stimulus=2; recording starting
-INFO - 2019-02-25 17:04:37,418 - Recorder.__init__: name= mirror=True
-INFO - 2019-02-25 17:04:37,970 - Recorder.begin: starting recording loop
-INFO - 2019-02-25 17:04:38,585 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-02-25 17:04:38,586 - on_button_space_press: current_stimulus=3 recording=True
-INFO - 2019-02-25 17:04:38,586 - load_stimulus: current_stimulus=3 stimulus type=Image
-INFO - 2019-02-25 17:04:38,586 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/White.png
-INFO - 2019-02-25 17:04:38,657 - Recorder.begin: recording ended, releasing resources
-INFO - 2019-02-25 17:04:39,173 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-02-25 17:04:39,173 - on_button_space_release: current_stimulus=3; recording starting
-INFO - 2019-02-25 17:04:39,173 - Recorder.__init__: name= mirror=True
-INFO - 2019-02-25 17:04:39,736 - Recorder.begin: starting recording loop
-INFO - 2019-02-25 17:04:40,515 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-02-25 17:04:40,515 - on_button_space_press: current_stimulus=4 recording=True
-INFO - 2019-02-25 17:04:40,515 - load_stimulus: current_stimulus=4 stimulus type=Image
-INFO - 2019-02-25 17:04:40,515 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Yellow.png
-INFO - 2019-02-25 17:04:40,551 - Recorder.begin: recording ended, releasing resources
-INFO - 2019-02-25 17:04:41,091 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-02-25 17:04:41,091 - on_button_space_release: current_stimulus=4; recording starting
-INFO - 2019-02-25 17:04:41,091 - Recorder.__init__: name= mirror=True
-INFO - 2019-02-25 17:04:41,656 - Recorder.begin: starting recording loop
-INFO - 2019-02-25 17:04:42,292 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-02-25 17:04:42,293 - on_button_space_press: current_stimulus=5 recording=True
-INFO - 2019-02-25 17:04:42,342 - Recorder.begin: recording ended, releasing resources
-INFO - 2019-02-25 17:04:42,946 - KeyTracker.report_key_release_callback: key=space, is released= True
-WARNING - 2019-02-25 17:04:42,946 - on_button_space_release: can_start_recording is False, video must end before the signer may be recorded
-INFO - 2019-02-25 17:04:52,171 - Program closing due to user command
-INFO - 2019-02-25 17:04:52,192 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-25 17:21:30,973 - Starting log
+INFO - 2019-02-25 17:21:31,074 - KeyTracker.track: key=space
+INFO - 2019-02-25 17:21:43,680 - Page_Start_Experiment: load_experiment
+INFO - 2019-02-25 17:21:47,071 - Page_Start_Experiment: load_dir
+INFO - 2019-02-25 17:21:50,798 - KeyTracker.report_key_press: valid keypress detected: key=space
+INFO - 2019-02-25 17:21:50,798 - Starting session for z for the first time True
+INFO - 2019-02-25 17:21:50,798 - load_stimulus_just_started: current_stimulus=0 stimulus type=Image
+INFO - 2019-02-25 17:21:50,798 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Blue.png
+INFO - 2019-02-25 17:21:52,203 - KeyTracker.report_key_press: valid keypress detected: key=space
+INFO - 2019-02-25 17:21:52,203 - on_button_space_press: current_stimulus=0 recording=False
+INFO - 2019-02-25 17:21:52,787 - KeyTracker.report_key_release_callback: key=space, is released= True
+INFO - 2019-02-25 17:21:52,787 - on_button_space_release: current_stimulus=0; recording starting
+INFO - 2019-02-25 17:21:52,787 - Recorder.__init__: name= mirror=True
+INFO - 2019-02-25 17:21:53,543 - Recorder.begin: starting recording loop
+INFO - 2019-02-25 17:21:54,429 - KeyTracker.report_key_press: valid keypress detected: key=space
+INFO - 2019-02-25 17:21:54,429 - on_button_space_press: current_stimulus=1 recording=True
+INFO - 2019-02-25 17:21:54,430 - load_stimulus: current_stimulus=1 stimulus type=Image
+INFO - 2019-02-25 17:21:54,430 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Pink.png
+INFO - 2019-02-25 17:21:54,502 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-25 17:21:55,013 - KeyTracker.report_key_release_callback: key=space, is released= True
+INFO - 2019-02-25 17:21:55,013 - on_button_space_release: current_stimulus=1; recording starting
+INFO - 2019-02-25 17:21:55,013 - Recorder.__init__: name= mirror=True
+INFO - 2019-02-25 17:21:55,635 - Recorder.begin: starting recording loop
+INFO - 2019-02-25 17:21:56,099 - KeyTracker.report_key_press: valid keypress detected: key=space
+INFO - 2019-02-25 17:21:56,099 - on_button_space_press: current_stimulus=2 recording=True
+INFO - 2019-02-25 17:21:56,099 - load_stimulus: current_stimulus=2 stimulus type=Image
+INFO - 2019-02-25 17:21:56,099 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Red.png
+INFO - 2019-02-25 17:21:56,195 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-25 17:21:56,685 - KeyTracker.report_key_release_callback: key=space, is released= True
+INFO - 2019-02-25 17:21:56,685 - on_button_space_release: current_stimulus=2; recording starting
+INFO - 2019-02-25 17:21:56,685 - Recorder.__init__: name= mirror=True
+INFO - 2019-02-25 17:21:57,263 - Recorder.begin: starting recording loop
+INFO - 2019-02-25 17:21:57,569 - KeyTracker.report_key_press: valid keypress detected: key=space
+INFO - 2019-02-25 17:21:57,569 - on_button_space_press: current_stimulus=3 recording=True
+INFO - 2019-02-25 17:21:57,569 - load_stimulus: current_stimulus=3 stimulus type=Image
+INFO - 2019-02-25 17:21:57,570 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/White.png
+INFO - 2019-02-25 17:21:57,674 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-25 17:21:58,153 - KeyTracker.report_key_release_callback: key=space, is released= True
+INFO - 2019-02-25 17:21:58,153 - on_button_space_release: current_stimulus=3; recording starting
+INFO - 2019-02-25 17:21:58,153 - Recorder.__init__: name= mirror=True
+INFO - 2019-02-25 17:21:58,723 - Recorder.begin: starting recording loop
+INFO - 2019-02-25 17:21:59,136 - KeyTracker.report_key_press: valid keypress detected: key=space
+INFO - 2019-02-25 17:21:59,136 - on_button_space_press: current_stimulus=4 recording=True
+INFO - 2019-02-25 17:21:59,136 - load_stimulus: current_stimulus=4 stimulus type=Image
+INFO - 2019-02-25 17:21:59,136 - Image_Displayer.__init__ C:/Users/jeffr/Documents/Standard Documents/Programming/Projects/VS Code DEV/SignRecorder/test_files/test_images/Yellow.png
+INFO - 2019-02-25 17:21:59,143 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-25 17:21:59,719 - KeyTracker.report_key_release_callback: key=space, is released= True
+INFO - 2019-02-25 17:21:59,719 - on_button_space_release: current_stimulus=4; recording starting
+INFO - 2019-02-25 17:21:59,719 - Recorder.__init__: name= mirror=True
+INFO - 2019-02-25 17:22:00,293 - Recorder.begin: starting recording loop
+INFO - 2019-02-25 17:22:00,635 - KeyTracker.report_key_press: valid keypress detected: key=space
+INFO - 2019-02-25 17:22:00,635 - on_button_space_press: current_stimulus=5 recording=True
+INFO - 2019-02-25 17:22:00,764 - Recorder.begin: recording ended, releasing resources
+INFO - 2019-02-25 17:22:01,283 - KeyTracker.report_key_release_callback: key=space, is released= True
+WARNING - 2019-02-25 17:22:01,283 - on_button_space_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-02-25 17:22:02,555 - Program closing due to user command
+INFO - 2019-02-25 17:22:02,574 - Recorder.begin: recording ended, releasing resources

@@ -1,12 +1,13 @@
-Lab meeting TODO
+TODO
+    Check the display bug--if changing between pages can cause it (or even if having pages does so)
     Make a mac .sh / dbl click thing
     Fix bugs
-    option for randomize in create exp. (later)
-
+    
 Important
     waitKey stuff
 
 Long-term / potential
+    option for randomize in create exp. (later)
     Allow merging of videos
     Config file recovery if deleted
     Allow search for more webcams after Start
