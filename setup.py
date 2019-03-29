@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Not sure of this works right now (v.0.2beta)
+#Not sure if this works right now (v.0.2beta)
 
 from distutils.core import setup
 

@@ -16,23 +16,31 @@ Program data global variables
 '''
 #backend
 logger = None
+settings = None
 
 #experiment data
 webcam_num = 1
 study_name = ''
 study_files = []
+stimulus_type = ''
+stimuli_set = []
+#current_stimulus = 0
 subject_id_entry_box = None
+subject_id = 'No_Subject_ID'
 experiment = None
 
 #recording
 window = None
 recorder = None
+#recording = False
 just_started = True
+#keep_displaying = True
+#can_start_recording = True
 
 #files
-out_dir = None
+out_dir = '.'
 video_path = None
-video_id = None
+video_id = ''
 last_video_id = None
 
 #tk ui
@@ -47,16 +55,16 @@ key_tracker = None
 #recording_timer = None
 
 #Settings
-settings_dict_defaults = {'backcolor': '#000000',
-    'ui_element_color': '#888888',
-    'forecolor': '#000000'}
-settings_dict = {}
+backcolor = '#000000'
+ui_element_color = '#888888'
+forecolor = '#000000'
+allow_override = False
 
 #text
 default_font = 20
 
 '''
-Initialization
+Core program methods
 '''
 def main():
     '''
@@ -65,8 +73,8 @@ def main():
     Once the gui is loaded, the gui takes over control of program execution from there onwards.
     '''
 
-    init_logging()
     load_config()
+    init_logging()
     init_gui()
 
 def load_config():
@@ -75,16 +83,25 @@ def load_config():
     and write a new config file, overwritting the old one if it is present.
     '''
 
-    global settings_dict
+    global ui_element_color, backcolor, forecolor, allow_override
     try:
-        with open('config.json', 'r') as config:
-            settings_dict = json.loads(config.read())
+        with open('config.csv', 'r') as config:
+            for line in config:
+                key, value = line.split(',', 1)
+                if key == 'allow_override':
+                    allow_override = int(value) == 1
+                elif key == 'backcolor':
+                    backcolor = value.strip()
+                elif key == 'forecolor':
+                    forecolor = value.strip()
+                elif key == 'ui_element_color':
+                    ui_element_color = value.strip()
     except Exception as err:
         message = 'Could not read config file'
         logger.error(message + ': ' + str(err))
-        recover_config_file()
+        write_config_file()
 
-def recover_config_file():
+def write_config_file():
     '''
     This method should only be called if the config file is corrupted or missing. It re-writes the config data and replaces all
     data with the default values, or the last loaded non-corrupt data value if such a data value is present.
@@ -92,12 +109,12 @@ def recover_config_file():
     If this operations fails, the program will continue to run, but no config file will be generated.
     '''
 
-    global settings_dict
-    logger.info('recover_config_file: loading default settings and attempting to recover the config file')
-    settings_dict = settings_dict_defaults
     try:
-        with open('config.json', 'w') as config:
-            print(json.dumps(settings_dict_defaults), file=config)
+        with open('config.csv', 'w') as config:
+            print('allow_override,' + str(allow_override), file=config)
+            print('backcolor,' + backcolor, file=config)
+            print('forecolor,' + forecolor, file=config)
+            print('ui_element_color,' + ui_element_color, file=config)
     except Exception as err:
         message = 'Attempt to recover config file failed: Could not write new config file' 
         logger.critical(message + ': ' + str(err))
@@ -158,13 +175,13 @@ def init_gui():
     #Master window
     window = tk.Tk()
     window.wm_title('Sign Recorder')
-    window.config(background = settings_dict['backcolor'])
+    window.config(background = backcolor)
     width = window.winfo_screenwidth()
     height = window.winfo_screenheight()
     window.geometry("%dx%d+0+0" % (width, height))
 
     #Main Frame in window
-    main_frame = MainFrame(window, background = settings_dict['backcolor'])
+    main_frame = MainFrame(window, background = backcolor)
     main_frame.prepare_display()
     main_frame.pack(side="top", fill="both", expand=True)
 
@@ -180,9 +197,6 @@ def init_gui():
     #Show window
     window.mainloop()
 
-'''
-Experiment and data collection
-'''
 def on_key_press(event):
     '''
     Called whenever a key press event is detected. This method should not be linked to key press events directly; the use of the
@@ -193,6 +207,15 @@ def on_key_press(event):
     '''
 
     experiment.on_input_press(event.keysym)
+    '''
+    global just_started
+    if event.keysym == 'space':
+        if just_started:
+            on_button_space_press_just_started()
+            just_started = False
+        else:
+            on_button_space_press()
+    '''
 
 def on_key_release(event):
     '''
@@ -201,6 +224,8 @@ def on_key_release(event):
     '''
 
     experiment.on_input_release(event.keysym)
+    '''if event.keysym == 'space':
+        on_button_space_release()'''
 
 class Experiment(abc.ABC):
     @abc.abstractmethod
@@ -211,23 +236,18 @@ class Experiment(abc.ABC):
     def on_input_release(self, input_key):
         pass
 
-class Naming_Experiment(Experiment):
-    #Experiment Parameters
-    stimuli = []
-    subject_id = None
-    stimulus_type = None
 
-    #Experiment Running
+class Naming_Experiment(Experiment):
+    stimuli = []
+    display_timer = None
+    recording_timer = None
     recording = False
-    last_video_id = None
-    video_id = None
+    last_video_id = ''
+    video_id = ''
     keep_displaying = True
     current_stimulus = 0
     can_start_recording = True
-    
-    #Timing
-    display_timer = None
-    recording_timer = None
+    stimulus_type = ''
 
     def __init__(self, data):
         '''
@@ -239,7 +259,6 @@ class Naming_Experiment(Experiment):
 
         '''
         self.stimuli = data['file']
-        self.stimulus_type = data['stimulus_type']
         self.display_timer = Timer()
         self.recording_timer = Timer()
 
@@ -253,15 +272,18 @@ class Naming_Experiment(Experiment):
         '''
 
         logger.info('Naming_Experiment: on_input_press: current_stimulus=' + str(self.current_stimulus) + ' recording=' + str(self.recording))
-        self.recording = False
-        if self.recording_timer.active():
-            self.recording_timer.end()
-        if self.current_stimulus >= len(self.stimuli):
-            main_frame.select_start_experiment()
-            pop_up('All data for ' + self.subject_id + ' has been collected')
-            self.reset_for_next_subject()
-        else:
-            self.load_stimulus()
+        if self.recording:
+            self.recording = False
+            if self.recording_timer.active():
+                self.recording_timer.end()
+            if self.current_stimulus >= len(self.stimuli):
+                main_frame.select_start_experiment()
+                pop_up('All data for ' + subject_id + ' has been collected')
+                reset_for_next_subject()
+            else:
+                self.last_video_id = self.video_id
+                self.video_id = os.path.basename(self.stimuli[current_stimulus].strip())
+                self.load_stimulus()
 
     def on_input_release(self, input_key):
         '''
@@ -269,17 +291,13 @@ class Naming_Experiment(Experiment):
         the recording timer. It also updates program state tracking variables to refect the current state of the progam.
         '''
 
-        if self.subject_id == None:
-            self.subject_id = subject_id_entry_box.get().strip()
         if self.can_start_recording and self.current_stimulus < len(self.stimuli):
             logger.info('Naming_Experiment: on_input_release: current_stimulus=' + str(self.current_stimulus) + '; recording starting')
-            self.last_video_id = self.video_id
-            self.video_id = os.path.basename(self.stimuli[self.current_stimulus].strip())
             self.recording = True
             self.keep_displaying = False
-            self.recording_timer.begin()
             self.current_stimulus += 1
-            recorder = Recorder(self.subject_id + '-' + self.video_id, True)
+            self.recording_timer.begin()
+            recorder = Recorder(subject_id + '-' + video_id, True)
             recorder.begin()
         else:
             logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
@@ -294,33 +312,147 @@ class Naming_Experiment(Experiment):
         '''
 
         global keep_displaying
-        logger.info('load_stimulus: current_stimulus=' + str(self.current_stimulus) + ' stimulus type=' + str(self.stimulus_type))
+        logger.info('load_stimulus: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
 
         keep_displaying = True
         stimulus = self.stimuli[self.current_stimulus].strip()
         if self.display_timer.active():
             self.display_timer.end()
+            #write_meta(out_dir, subject_id + '-' + last_video_id)
+
         if self.stimulus_type == 'Image':
             self.display_timer.begin()
             Image_Displayer(stimulus).begin()
-        elif self.stimulus_type == 'Video':
+        elif stimulus_type == 'Video':
             self.display_timer.begin()
             Video_Displayer(stimulus).begin()
-
-    def reset_for_next_subject(self):
-        '''
-        Resets the environment so that the next subject can begin the experiment.
-        '''
-
-        logger.info('reset_for_next_subject: Resetting the environment for the next subject')
-
-        key_tracker.reset()
-        self.subject_id = None
-        subject_id_entry_box.delete(0, last='end')
 
 class Lexical_Priming_Experiment(Experiment):
     def __init__(self, stimuli):
         pass
+
+"""
+def on_button_space_press_just_started():
+    '''
+    This method should be called the first time each subject first does an authenticated space press. It creates their session and 
+    transfers to the stimulus viewing screen. THe stimulus will be displayed there but recording will not begin tunil the next 
+    authenticated space press is detected.
+    '''
+
+    global video_id, subject_id, last_video_id
+    last_video_id = video_id
+    video_id = os.path.basename(stimuli_set[current_stimulus].strip())
+    subject_id = subject_id_entry_box.get().strip()
+    logger.info('Starting session for ' + subject_id + ' for the first time ' + str(just_started))
+    load_stimulus_just_started()
+
+def on_button_space_press():
+    '''
+    This method should be called every time space is pressed (if that press has been authenticated), except the first. It proceeds
+    to the next stimulus and will begin recording, ending the current stimulus and recording. It also ends the recording_timer if 
+    it was running, and updates program state tracking variables to refect the current state of the progam.
+
+    If there are mno more stimuli to run, the program displays a pop-up message stating that data collection is complete.
+    '''
+
+    global recording, video_id, last_video_id
+    logger.info('on_button_space_press: current_stimulus=' + str(current_stimulus) + ' recording=' + str(recording))
+    if recording:
+        recording = False
+        if recording_timer.active():
+            recording_timer.end()
+        if current_stimulus >= len(stimuli_set):
+            main_frame.select_start_experiment()
+            pop_up('All data for ' + subject_id + ' has been collected')
+            reset_for_next_subject()
+        else:
+            last_video_id = video_id
+            video_id = os.path.basename(stimuli_set[current_stimulus].strip())
+            load_stimulus()
+
+def on_button_space_release():
+    '''
+    This method should be called when space is released (if that release has been authenticated). It begins recording and starts
+    the recording timer. It also updates program state tracking variables to refect the current state of the progam.
+    '''
+
+    global recording, current_stimulus, keep_displaying, recorder
+    if can_start_recording and current_stimulus < len(stimuli_set):
+        logger.info('on_button_space_release: current_stimulus=' + str(current_stimulus) + '; recording starting')
+        recording = True
+        keep_displaying = False
+        current_stimulus += 1
+        recording_timer.begin()
+        recorder = Recorder(subject_id + '-' + video_id, True)
+        recorder.begin()
+    else:
+        logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
+
+def load_stimulus_just_started():
+    '''
+    Loads and displays the first stimulis for the current subject. It also starts the display timer, which measures the time that
+    a stimulus is displayed before signing.
+    '''
+
+    global keep_displaying
+    logger.info('load_stimulus_just_started: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
+
+    keep_displaying = True
+    stimulus = stimuli_set[current_stimulus].strip()
+
+    if stimulus_type == 'Image':
+        display_timer.begin()
+        Image_Displayer(stimulus).begin()
+    elif stimulus_type == 'Video':
+        display_timer.begin()
+        Video_Displayer(stimulus).begin()
+
+def load_stimulus():
+    '''
+    Loads and displays the next stimulis for the current subject, but should not be used for the first stimulus of a subjecct.
+    It resets the display timer, which measures the time that a stimulus is displayed before signing.
+
+    Later, it will also write timer output to a meta file with the same name as the output file. Timer data it not yet verified
+    though, so it is not ready for use.
+    '''
+
+    global keep_displaying
+    logger.info('load_stimulus: current_stimulus=' + str(current_stimulus) + ' stimulus type=' + str(stimulus_type))
+
+    keep_displaying = True
+    stimulus = stimuli_set[current_stimulus].strip()
+    if display_timer.active():
+        display_timer.end()
+        #write_meta(out_dir, subject_id + '-' + last_video_id)
+
+    if stimulus_type == 'Image':
+        display_timer.begin()
+        Image_Displayer(stimulus).begin()
+    elif stimulus_type == 'Video':
+        display_timer.begin()
+        Video_Displayer(stimulus).begin()
+"""
+
+def reset_for_next_subject():
+    '''
+    
+    '''
+
+    global subject_id, just_started, current_stimulus, keep_displaying, can_start_recording
+    logger.info('Resetting the environment for the next subject')
+
+    key_tracker.last_press_time = 0
+    key_tracker.last_release_time = 0
+    key_tracker.last_release_callback_time = 0
+    key_tracker.first_callback_call = True
+    key_tracker.last_event_was_press = False
+
+    current_stimulus = 0
+    keep_displaying = True
+    can_start_recording = True
+    subject_id = 'No_Subject_ID'
+    just_started = True
+    subject_id_entry_box.delete(0, last='end')
 
 def pop_up(message):
     '''
@@ -334,14 +466,14 @@ def pop_up(message):
 
     pop_up_window = tk.Tk()
     pop_up_window.wm_title('Message')
-    pop_up_window.config(background = settings_dict['backcolor'])
+    pop_up_window.config(background=backcolor)
 
-    pop_up_text = tk.Text(pop_up_window, font = default_font, height = 5, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+    pop_up_text = tk.Text(pop_up_window, font = default_font, height = 5, width = 70, background = ui_element_color, foreground = forecolor)
     pop_up_text.insert(tk.INSERT, message)
     pop_up_text.config(state = 'disabled')
-    pop_up_text.grid(row = 0, column = 0, padx = padding_x, pady = padding_y)
+    pop_up_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
 
-    select_files_button = tk.Button(pop_up_window, text ="Close", command = pop_up_window.destroy, font = default_font, height = 3, width = 10, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+    select_files_button = tk.Button(pop_up_window, text ="Close", command = pop_up_window.destroy, font = default_font, height = 3, width = 10, background = ui_element_color, foreground = forecolor)
     select_files_button.grid(row=1, column=0)
 
     pop_up_window.mainloop()
@@ -358,7 +490,7 @@ def write_out(path, name, message):
     logger.info('writing meta file at path=' + path + ' with name=' + name)
     file_name = os.path.join(path, name + '.meta.csv')
     try:
-        if os.path.exists(file_name):
+        if os.path.exists(file_name) and not allow_override:
             message = 'Cannot overwrite existing meta file: '
             logger.critical(message + file_name)
             pop_up(message + '\n' + file_name)
@@ -371,25 +503,19 @@ def write_out(path, name, message):
         pop_up(message)
         raise Exception(message)
 
-def on_close(close = True):
+def on_close():
     '''
     Handles properly closing the program and its spawned resources. As much as possible, all close events should be routed to
     this method rather than immediately calling an exit function.
-
-    Parameter:
-        close: Whether this method should close the program. If false, all program resources still will be cleared but the program
-        will not be closed. This should be done when a critical exception occurs so the exception can still be raised.
     '''
 
-    logger.info('on_close: Cleaning resources and closing' if close else 'on_close: Cleaning resources to prepare for closing')
-
+    logger.info('on_close: Program closing')
     window.destroy()
     try:
         recorder.end()
     except:
         pass
-    if close:
-        sys.exit(0)
+    sys.exit(0)
 
 def get_proper_resize_dimensions_for_fullscreen(img):
     '''
@@ -424,7 +550,7 @@ def get_proper_resize_dimensions_for_fullscreen(img):
         return height_based_scaling_width, height
 
 '''
-Data and user-input
+Data and user-input classes
 '''
 class Recorder():
     '''
@@ -466,7 +592,7 @@ class Recorder():
 
         #create VideoWriter object
         file_name = os.path.join(out_dir, self.name + '.avi')
-        if os.path.exists(file_name):
+        if os.path.exists(file_name) and not allow_override:
             message = 'Cannot overwrite existing video file: ' 
             logger.critical(message + file_name)
             pop_up(message + '\n' + file_name)
@@ -485,7 +611,7 @@ class Recorder():
             # Capture frame-by-frame
             is_reading, frame = self.web_cam.read()
     
-            if is_reading and experiment.recording:
+            if is_reading and recording:
                 if self.mirror:
                     frame = cv2.flip(frame, 1)
                 self.video_writer.write(frame)
@@ -493,7 +619,7 @@ class Recorder():
                 break
     
             if cv2.waitKey(1) & 0xFF == ord('1'): #quit on 1
-                experiment.on_input_release('space')
+                on_button_space_release()
                 break
     
         self.end()
@@ -503,7 +629,7 @@ class Recorder():
         Ends the recording and releases resources.
         '''
 
-        logger.info('Recorder.end: recording ended, releasing resources')
+        logger.info('Recorder.begin: recording ended, releasing resources')
         self.web_cam.release()
         self.video_writer.release()
 
@@ -518,7 +644,8 @@ class Video_Displayer():
         self.file_name = file_name
 
     def begin(self):
-        experiment.can_start_recording = False
+        global can_start_recording
+        can_start_recording = False
         self.video_input = cv2.VideoCapture(self.file_name)
         self.fps = int(self.video_input.get(cv2.CAP_PROP_FPS))
         self.display = main_frame.page_show_stimuli.display_region
@@ -534,6 +661,7 @@ class Video_Displayer():
         self.run_frame()        
 
     def run_frame(self):
+        global can_start_recording
         #Get the next frame
         is_reading, frame = self.video_input.read()
 
@@ -550,10 +678,10 @@ class Video_Displayer():
                 self.display.after(self.fps, self.run_frame)
             else:
                 self.end('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
-                experiment.can_start_recording = True
+                can_start_recording = True
         else:
             self.end('Video_Displayer.run_frame: display ended naturally')
-            experiment.can_start_recording = True
+            can_start_recording = True
             
 
     def end(self, message = 'Video_Displayer.run_frame ended'):
@@ -597,15 +725,9 @@ class KeyTracker():
         logger.info('KeyTracker.track: key=' + key)
         self.key = key
 
-    def reset(self):
-        self.last_press_time = 0
-        self.last_release_time = 0
-        self.last_release_callback_time = 0
-        self.first_callback_call = True
-        self.last_event_was_press = False
-
     def is_pressed(self):
-        return time.time() - self.last_press_time < .1 #In seconds
+        press_time_test = time.time() - self.last_press_time < .1 #In seconds
+        return press_time_test
 
     def report_key_press(self, event):
         if not self.last_event_was_press and event.keysym == self.key:
@@ -621,14 +743,14 @@ class KeyTracker():
         if self.last_event_was_press and event.keysym == self.key:
             self.last_event_was_press = False
             self.last_release_time = time.time()
-            timer = threading.Timer(.15, self.report_key_release_callback, args=[event]) #In seconds
+            timer = threading.Timer(.015, self.report_key_release_callback, args=[event]) #In seconds
             timer.start()
     
     def report_key_release_callback(self, event):
         if self.first_callback_call:
             self.last_release_callback_time = time.time()
             self.first_callback_call = False
-        if not self.is_pressed():
+        if time.time() - self.last_release_callback_time > .01:
             self.last_release_callback_time = time.time()
             logger.info('KeyTracker.report_key_release_callback: key=' + self.key + ', is released= ' + str((not self.is_pressed())))
             if not self.is_pressed():
@@ -651,15 +773,16 @@ class Timer():
 
 
 '''
-UI and layout management
+UI classes and layout management
 '''
+
 def arrange_header_in(page):
     button_frame = page.button_frame
     top_bar_buttons = []
     #Place buttons in the top-level button frame
-    top_bar_buttons.append(tk.Button(button_frame, text="Main Menu", font=default_font, command=main_frame.select_main_menu, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor']))
-    top_bar_buttons.append(tk.Button(button_frame, text="Create Experiment", font=default_font, command=main_frame.select_create_experiment, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor']))
-    top_bar_buttons.append(tk.Button(button_frame, text="Start Experiment", font=default_font, command=main_frame.select_start_experiment, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor']))
+    top_bar_buttons.append(tk.Button(button_frame, text="Main Menu", font=default_font, command=main_frame.select_main_menu, background = ui_element_color, foreground = forecolor))
+    top_bar_buttons.append(tk.Button(button_frame, text="Create Experiment", font=default_font, command=main_frame.select_create_experiment, background = ui_element_color, foreground = forecolor))
+    top_bar_buttons.append(tk.Button(button_frame, text="Start Experiment", font=default_font, command=main_frame.select_start_experiment, background = ui_element_color, foreground = forecolor))
     
     #Grid buttons
     col = 0
@@ -674,8 +797,8 @@ class Page(tk.Frame):
 
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
-        self.config(background = settings_dict['backcolor'])
-        self.button_frame = tk.Frame(self, background = settings_dict['backcolor'])
+        self.config(background = backcolor)
+        self.button_frame = tk.Frame(self, background = backcolor)
 
     def show(self):
         self.lift()
@@ -707,7 +830,7 @@ class Page_Main_Menu(Page):
 
         arrange_header_in(self)
 
-        file_text = tk.Text(self, font = default_font, height = 15, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        file_text = tk.Text(self, font = default_font, height = 15, width = 70, background = ui_element_color, foreground = forecolor)
         file_text.insert(tk.INSERT, about_text)
         file_text.config(state = 'disabled')
         file_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
@@ -729,7 +852,7 @@ class Page_Create_Experiment(Page):
         padding_x = 10
         padding_y = 10
 
-        stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         stimulus_text.insert(tk.INSERT, '\nSelect Stimulus Type')
         stimulus_text.tag_configure("center", justify='center')
         stimulus_text.tag_add("center", 1.0, "end")
@@ -741,10 +864,10 @@ class Page_Create_Experiment(Page):
         self.option_selected = tk.StringVar(self)
         option_menu = tk.OptionMenu(self, self.option_selected, *options)
         self.option_selected.set(default_option)
-        option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 3, width = 30, font = default_font)
+        option_menu.config(background = ui_element_color, foreground = forecolor, height = 3, width = 30, font = default_font)
         option_menu.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
-        paradigm_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        paradigm_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         paradigm_text.insert(tk.INSERT, '\nSelect Experiemnt Paradigm')
         paradigm_text.tag_configure("center", justify='center')
         paradigm_text.tag_add("center", 1.0, "end")
@@ -756,7 +879,7 @@ class Page_Create_Experiment(Page):
         self.paradigm_option_selected = tk.StringVar(self)
         paradigm_option_menu = tk.OptionMenu(self, self.paradigm_option_selected, *paradigm_options)
         self.paradigm_option_selected.set(default_paradigm_option)
-        paradigm_option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 3, width = 30, font = default_font)
+        paradigm_option_menu.config(background = ui_element_color, foreground = forecolor, height = 3, width = 30, font = default_font)
         paradigm_option_menu.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
         filestring = '''
@@ -765,27 +888,27 @@ class Page_Create_Experiment(Page):
         --For text stimuli, select files contianing each stimulus in one file.
         '''
 
-        select_text = tk.Text(self, font = default_font, height = 5, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_text = tk.Text(self, font = default_font, height = 5, width = 70, background = ui_element_color, foreground = forecolor)
         select_text.insert(tk.INSERT, filestring)
         select_text.tag_configure("center", justify='center')
         select_text.tag_add("center", 1.0, "end")
         select_text.config(state = 'disabled')
         select_text.grid(row=5, column=0, padx=padding_x, pady=padding_y)
 
-        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_files_button.grid(row=6, column=0, padx=padding_x, pady=padding_y)
 
-        file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         file_text.insert(tk.INSERT, '\nOnce you are done, press create experiment to save an experiment file')
         file_text.tag_configure("center", justify='center')
         file_text.tag_add("center", 1.0, "end")
         file_text.config(state = 'disabled')
         file_text.grid(row=7, column=0, padx=padding_x, pady=padding_y)
 
-        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_files_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
 
-        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = ui_element_color, foreground = forecolor)
         self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
         self.selected_files_info_text.config(state = 'disabled')
         self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
@@ -806,7 +929,7 @@ class Page_Create_Experiment(Page):
         
         data = {}
         data['paradigm'] = self.paradigm_option_selected.get()
-        data['stimulus_type'] = self.option_selected.get()
+        data['type'] = self.option_selected.get()
         data['file'] = self.files
 
         try:
@@ -831,34 +954,34 @@ class Page_Start_Experiment(Page):
         padding_x = 10
         padding_y = 10
 
-        file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         file_text.insert(tk.INSERT, '\nSelect an experiment file to load')
         file_text.tag_configure("center", justify='center')
         file_text.tag_add("center", 1.0, "end")
         file_text.config(state = 'disabled')
         file_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
-        dir_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        dir_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         dir_text.insert(tk.INSERT, '\nSelect a folder in which to save the output')
         dir_text.tag_configure("center", justify='center')
         dir_text.tag_add("center", 1.0, "end")
         dir_text.config(state = 'disabled')
         dir_text.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
-        select_file_button = tk.Button(self, text ="Choose output folder", command = self.load_dir, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_file_button = tk.Button(self, text ="Choose output folder", command = self.load_dir, font = default_font, height = 3, width = 30, background = ui_element_color, foreground = forecolor)
         select_file_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
-        entry_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        entry_text = tk.Text(self, font = default_font, height = 3, width = 70, background = ui_element_color, foreground = forecolor)
         entry_text.insert(tk.INSERT, '\nEnter subject ID')
         entry_text.tag_configure("center", justify='center')
         entry_text.tag_add("center", 1.0, "end")
         entry_text.config(state = 'disabled')
         entry_text.grid(row=5, column=0, padx=padding_x, pady=padding_y)
 
-        subject_id_entry_box = tk.Entry(self, font = default_font, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        subject_id_entry_box = tk.Entry(self, font = default_font, background = ui_element_color, foreground = forecolor)
         subject_id_entry_box.grid(row=6, column=0, padx=padding_x, pady=padding_y)
 
         how_to_string = '''
@@ -870,7 +993,7 @@ class Page_Start_Experiment(Page):
         Once you are done signing, press the space bar again. You will then
         see the next prompt and the program will begin recording.
         '''
-        how_to_text = tk.Text(self, font = default_font, height = 9, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        how_to_text = tk.Text(self, font = default_font, height = 9, width = 70, background = ui_element_color, foreground = forecolor)
         how_to_text.insert(tk.INSERT, how_to_string)
         how_to_text.config(state = 'disabled')
         how_to_text.grid(row=7, column=0, padx=padding_x, pady=padding_y)
@@ -892,7 +1015,8 @@ class Page_Start_Experiment(Page):
         try:
             with open(experiment_file, 'r') as experiment_data:
                 data = json.loads(experiment_data.read())
-                if data['paradigm'] == 'Naming':
+                paradigm = data['paradigm']
+                if paradigm == 'Naming':
                     experiment = Naming_Experiment(data)
         except Exception as err:
             message = 'Could not load experiment file'
@@ -919,18 +1043,18 @@ class MainFrame(tk.Frame):
 
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
-        self.buttonframe = tk.Frame(main_frame, background = settings_dict['backcolor'])
-        self.config(background = settings_dict['backcolor'])
+        self.buttonframe = tk.Frame(main_frame, background = backcolor)
+        self.config(background = backcolor)
 
     def prepare_display(self):
         #Pages
-        self.page_main_menu = Page_Main_Menu(self, width = width, height = height, background = settings_dict['backcolor'])
-        self.page_create_experiment = Page_Create_Experiment(self, width = width, height = height, background = settings_dict['backcolor'])
-        self.page_start_experiment = Page_Start_Experiment(self, width = width, height = height, background = settings_dict['backcolor'])
-        self.page_show_stimuli = Page_Show_Stimuli(self, width = width, height = height, background = settings_dict['backcolor'])
+        self.page_main_menu = Page_Main_Menu(self, width = width, height = height, background = backcolor)
+        self.page_create_experiment = Page_Create_Experiment(self, width = width, height = height, background = backcolor)
+        self.page_start_experiment = Page_Start_Experiment(self, width = width, height = height, background = backcolor)
+        self.page_show_stimuli = Page_Show_Stimuli(self, width = width, height = height, background = backcolor)
 
         #Container
-        container = tk.Frame(self, background = settings_dict['backcolor'])
+        container = tk.Frame(self, background = backcolor)
         container.pack(side="top", fill="both", expand=True)
 
         #Place pages in the container frame
@@ -977,14 +1101,11 @@ class MainFrame(tk.Frame):
 This code starts program execition. The entire program is run in a try-except statement so that, should any error occur:
     The program can write out the error to the command line
     The program can still run on on_close() function to try to clean up all resources
-
-The logger is not used here since, among the possible errors that could cause a crash is the logger not having write permissions
-and it is still important the the failure be printed to a readable output.
 '''
+
 try:
     main()
 except Exception as e:
     trace = traceback.format_exc()
     print('Something bad happened ' + str(e) + '\n' + str(trace))
-    on_close(False)
-    raise
+    on_close()
