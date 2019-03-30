@@ -1,44 +1,5 @@
-INFO - 2019-03-29 15:37:59,349 - Starting log
-INFO - 2019-03-29 15:37:59,459 - KeyTracker.track: key=space
-INFO - 2019-03-29 15:38:01,120 - Page_Start_Experiment: load_experiment
-INFO - 2019-03-29 15:38:03,926 - Page_Start_Experiment: load_dir
-INFO - 2019-03-29 15:38:09,628 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-03-29 15:38:09,628 - Naming_Experiment: on_input_press: current_stimulus=0 recording=False
-INFO - 2019-03-29 15:38:09,628 - load_stimulus: current_stimulus=0 stimulus type=Image
-INFO - 2019-03-29 15:38:09,628 - Image_Displayer.__init__ C:/Users/jeffr/Downloads/1.png
-INFO - 2019-03-29 15:38:09,960 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-03-29 15:38:09,960 - Naming_Experiment: on_input_release: current_stimulus=0; recording starting
-INFO - 2019-03-29 15:38:09,960 - Recorder.__init__: name= mirror=True
-INFO - 2019-03-29 15:38:10,744 - Recorder.begin: starting recording loop
-INFO - 2019-03-29 15:38:13,255 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-03-29 15:38:13,255 - Naming_Experiment: on_input_press: current_stimulus=1 recording=True
-INFO - 2019-03-29 15:38:13,255 - load_stimulus: current_stimulus=1 stimulus type=Image
-INFO - 2019-03-29 15:38:13,255 - Image_Displayer.__init__ C:/Users/jeffr/Downloads/2.png
-INFO - 2019-03-29 15:38:13,287 - Recorder.end: recording ended, releasing resources
-INFO - 2019-03-29 15:38:13,512 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-03-29 15:38:13,512 - Naming_Experiment: on_input_release: current_stimulus=1; recording starting
-INFO - 2019-03-29 15:38:13,512 - Recorder.__init__: name= mirror=True
-INFO - 2019-03-29 15:38:14,074 - Recorder.begin: starting recording loop
-INFO - 2019-03-29 15:38:15,713 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-03-29 15:38:15,713 - Naming_Experiment: on_input_press: current_stimulus=2 recording=True
-INFO - 2019-03-29 15:38:15,713 - load_stimulus: current_stimulus=2 stimulus type=Image
-INFO - 2019-03-29 15:38:15,713 - Image_Displayer.__init__ C:/Users/jeffr/Downloads/3.png
-INFO - 2019-03-29 15:38:15,737 - Recorder.end: recording ended, releasing resources
-INFO - 2019-03-29 15:38:15,979 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-03-29 15:38:15,979 - Naming_Experiment: on_input_release: current_stimulus=2; recording starting
-INFO - 2019-03-29 15:38:15,979 - Recorder.__init__: name= mirror=True
-INFO - 2019-03-29 15:38:16,576 - Recorder.begin: starting recording loop
-INFO - 2019-03-29 15:38:17,892 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-03-29 15:38:17,892 - Naming_Experiment: on_input_press: current_stimulus=3 recording=True
-INFO - 2019-03-29 15:38:17,892 - load_stimulus: current_stimulus=3 stimulus type=Image
-INFO - 2019-03-29 15:38:17,892 - Image_Displayer.__init__ C:/Users/jeffr/Downloads/4.png
-INFO - 2019-03-29 15:38:17,924 - Recorder.end: recording ended, releasing resources
-INFO - 2019-03-29 15:38:18,165 - KeyTracker.report_key_release_callback: key=space, is released= True
-INFO - 2019-03-29 15:38:18,165 - Naming_Experiment: on_input_release: current_stimulus=3; recording starting
-INFO - 2019-03-29 15:38:18,165 - Recorder.__init__: name= mirror=True
-INFO - 2019-03-29 15:38:18,718 - Recorder.begin: starting recording loop
-INFO - 2019-03-29 15:38:19,949 - KeyTracker.report_key_press: valid keypress detected: key=space
-INFO - 2019-03-29 15:38:19,949 - Naming_Experiment: on_input_press: current_stimulus=4 recording=True
-INFO - 2019-03-29 15:38:19,980 - Recorder.end: recording ended, releasing resources
-INFO - 2019-03-29 15:38:20,242 - KeyTracker.report_key_release_callback: key=space, is released= True
-WARNING - 2019-03-29 15:38:20,242 - on_button_space_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-03-30 13:56:55,493 - Starting log
+INFO - 2019-03-30 13:56:55,598 - Page_Create_Experiment: paradigm_selected: paradigm_option_string=Naming
+INFO - 2019-03-30 13:56:55,607 - KeyTracker.track: key=space
+INFO - 2019-03-30 13:56:59,947 - Page_Create_Experiment: load_files
+INFO - 2019-03-30 13:57:06,105 - Page_Create_Experiment: create_experiment

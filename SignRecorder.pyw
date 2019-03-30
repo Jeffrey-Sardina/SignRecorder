@@ -42,10 +42,6 @@ width = 0
 height = 0
 key_tracker = None
 
-#timing
-#display_timer = None
-#recording_timer = None
-
 #Settings
 settings_dict_defaults = {'backcolor': '#000000',
     'ui_element_color': '#888888',
@@ -235,7 +231,9 @@ class Naming_Experiment(Experiment):
         produce the sign for what is shown.
 
         Parameters:
-            stimuli: A dictionary containing experiment data
+            data: A dictionary containing experiment data. This should contain the follwoing keys:
+                file, containing absolute paths to all of the stimuli to use;
+                stimulus_type, which tells whether the stimulus is Image or Video
 
         '''
         self.stimuli = data['file']
@@ -319,8 +317,133 @@ class Naming_Experiment(Experiment):
         subject_id_entry_box.delete(0, last='end')
 
 class Lexical_Priming_Experiment(Experiment):
-    def __init__(self, stimuli):
-        pass
+    #Experiment Parameters
+    stimuli_tuples = []
+    subject_id = None
+    stimulus_type = None
+    primer_type = None
+
+    #Experiment Running
+    recording = False
+    last_video_id = None
+    video_id = None
+    keep_displaying = True
+    current_round = 0
+    primer_time = 5
+    can_start_recording = True
+    
+    #Timing
+    display_timer = None
+    recording_timer = None
+
+    def __init__(self, data):
+        '''
+        Creates a new Lexical_Priming_Experiment, in which there is a primer image followed by a stimulus for signing. Recording begins
+        after the stimulus has been shown. Transition between the primer and stimulus is done using space, as is transition between the
+        stimulus and the recording, etc.
+
+        Parameters:
+            data: A dictionary containing experiment data. This should contain the follwoing keys:
+                file, which contains a tuple of: (absolute path of the primer, that of the stimulus);
+                stimulus_type, which tells whether the stimulus is Image or Video;
+                primer_type, which tells whether the primer is Image or Video;
+                primer_time, which contains the time to show the primer (in seconds, only needed if primer_time is Image)
+
+        '''
+        self.stimuli_tuples = data['file']
+        self.stimulus_type = data['stimulus_type']
+        self.primer_type = data['primer_type']
+        self.primer_time = data['primer_time'] if primer_type == 'Image' else 0
+        self.display_timer = Timer()
+        self.recording_timer = Timer()
+
+    def on_input_press(self, input_key):
+        '''
+        This method should be called every time space is pressed (if that press has been authenticated), except the first. It proceeds
+        to the next stimulus and will begin recording, ending the current stimulus and recording. It also ends the recording_timer if 
+        it was running, and updates program state tracking variables to refect the current state of the progam.
+
+        If there are no more stimuli to run, the program displays a pop-up message stating that data collection is complete.
+        '''
+
+        logger.info('Naming_Experiment: on_input_press: current_stimulus=' + str(self.current_round) + ' recording=' + str(self.recording))
+        self.recording = False
+        if self.recording_timer.active():
+            self.recording_timer.end()
+        if self.current_round >= len(self.stimuli_tuples):
+            main_frame.select_start_experiment()
+            pop_up('All data for ' + self.subject_id + ' has been collected')
+            self.reset_for_next_subject()
+        else:
+            self.load_primer()
+
+    def on_input_release(self, input_key):
+        '''
+        This method should be called when space is released (if that release has been authenticated). It begins recording and starts
+        the recording timer. It also updates program state tracking variables to refect the current state of the progam.
+        '''
+
+        if self.subject_id == None:
+            self.subject_id = subject_id_entry_box.get().strip()
+        if self.can_start_recording and self.current_round < len(self.stimuli_tuples):
+            logger.info('Naming_Experiment: on_input_release: current_round=' + str(self.current_round) + '; recording starting')
+            self.last_video_id = self.video_id
+            self.video_id = os.path.basename(self.stimuli_tuples[self.current_round][0].strip()) + '-' + os.path.basename(self.stimuli_tuples[self.current_round][1].strip())
+            self.recording = True
+            self.keep_displaying = False
+            self.recording_timer.begin()
+            self.current_round += 1
+            recorder = Recorder(self.subject_id + '-' + self.video_id, True)
+            recorder.begin()
+        else:
+            logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
+
+    def load_primer(self):
+        '''
+        Loads and displays the next stimulis for the current subject, but should not be used for the first stimulus of a subjecct.
+        It resets the display timer, which measures the time that a stimulus is displayed before signing.
+
+        Later, it will also write timer output to a meta file with the same name as the output file. Timer data it not yet verified
+        though, so it is not ready for use.
+        '''
+
+        global keep_displaying
+        logger.info('load_stimulus: current_stimulus=' + str(self.current_round) + ' stimulus type=' + str(self.stimulus_type))
+
+        keep_displaying = True
+        primer = self.stimuli_tuples[self.current_round][0].strip()
+        timer = None
+        if self.display_timer.active():
+            self.display_timer.end()
+        if self.primer_type == 'Image':
+            self.display_timer.begin()
+            Image_Displayer(primer).begin()
+            timer = threading.Timer(self.primer_time, self.on_primer_finished) #In seconds
+        elif self.primer_type == 'Video':
+            self.display_timer.begin()
+            Video_Displayer(primer).begin()
+            timer = threading.Timer(self.primer_time, self.on_primer_finished) #In seconds
+        timer.start()
+
+    def on_primer_finished(self):
+        stimulus = self.stimuli_tuples[self.current_round][1].strip()
+        if self.stimulus_type == 'Image':
+            self.display_timer.begin()
+            Image_Displayer(stimulus).begin()
+        elif self.stimulus_type == 'Video':
+            self.display_timer.begin()
+            Video_Displayer(stimulus).begin()
+
+    def reset_for_next_subject(self):
+        '''
+        Resets the environment so that the next subject can begin the experiment.
+        '''
+
+        logger.info('reset_for_next_subject: Resetting the environment for the next subject')
+
+        key_tracker.reset()
+        self.subject_id = None
+        subject_id_entry_box.delete(0, last='end')
 
 def pop_up(message):
     '''
@@ -512,10 +635,12 @@ class Video_Displayer():
     video_input = None
     fps = None
     display = None
+    callback = None
 
-    def __init__(self, file_name):
+    def __init__(self, file_name, callback = None):
         logger.info('Video_Displayer.__init__: file_name=' + file_name)
         self.file_name = file_name
+        self.callback = callback
 
     def begin(self):
         experiment.can_start_recording = False
@@ -551,14 +676,20 @@ class Video_Displayer():
             else:
                 self.end('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
                 experiment.can_start_recording = True
+                if not self.callback == None:
+                    self.callback()
         else:
             self.end('Video_Displayer.run_frame: display ended naturally')
             experiment.can_start_recording = True
+            if not self.callback == None:
+                self.callback()
             
 
     def end(self, message = 'Video_Displayer.run_frame ended'):
         logger.info(message)
         self.video_input.release()
+        if not self.callback == None:
+            self.callback()
 
 class Image_Displayer():
     file_name = ''
@@ -674,7 +805,6 @@ class Page(tk.Frame):
 
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
-        self.config(background = settings_dict['backcolor'])
         self.button_frame = tk.Frame(self, background = settings_dict['backcolor'])
 
     def show(self):
@@ -712,83 +842,12 @@ class Page_Main_Menu(Page):
         file_text.config(state = 'disabled')
         file_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-class Page_Create_Experiment(Page):
-    files = []
-    option_selected = None
-    paradigm_option_selected = None
-    entry = None
+class Paradigm_Creation_Page(Page):
     selected_files_info_text = None
+    files = []
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
-        self.init_elements()
-        
-    def init_elements(self):
-        arrange_header_in(self)
-
-        padding_x = 10
-        padding_y = 10
-
-        stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        stimulus_text.insert(tk.INSERT, '\nSelect Stimulus Type')
-        stimulus_text.tag_configure("center", justify='center')
-        stimulus_text.tag_add("center", 1.0, "end")
-        stimulus_text.config(state = 'disabled')
-        stimulus_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
-
-        options = ['Video', 'Image']
-        default_option = options[0]
-        self.option_selected = tk.StringVar(self)
-        option_menu = tk.OptionMenu(self, self.option_selected, *options)
-        self.option_selected.set(default_option)
-        option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 3, width = 30, font = default_font)
-        option_menu.grid(row=2, column=0, padx=padding_x, pady=padding_y)
-
-        paradigm_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        paradigm_text.insert(tk.INSERT, '\nSelect Experiemnt Paradigm')
-        paradigm_text.tag_configure("center", justify='center')
-        paradigm_text.tag_add("center", 1.0, "end")
-        paradigm_text.config(state = 'disabled')
-        paradigm_text.grid(row=3, column=0, padx=padding_x, pady=padding_y)
-
-        paradigm_options = ['Naming', 'Lexcial Priming']
-        default_paradigm_option = paradigm_options[0]
-        self.paradigm_option_selected = tk.StringVar(self)
-        paradigm_option_menu = tk.OptionMenu(self, self.paradigm_option_selected, *paradigm_options)
-        self.paradigm_option_selected.set(default_paradigm_option)
-        paradigm_option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 3, width = 30, font = default_font)
-        paradigm_option_menu.grid(row=4, column=0, padx=padding_x, pady=padding_y)
-
-        filestring = '''
-        Please Select the files to use for stimuli. These will be used during the experiment.
-        --For videos or images, select the video or image files from your computer.
-        --For text stimuli, select files contianing each stimulus in one file.
-        '''
-
-        select_text = tk.Text(self, font = default_font, height = 5, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_text.insert(tk.INSERT, filestring)
-        select_text.tag_configure("center", justify='center')
-        select_text.tag_add("center", 1.0, "end")
-        select_text.config(state = 'disabled')
-        select_text.grid(row=5, column=0, padx=padding_x, pady=padding_y)
-
-        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_files_button.grid(row=6, column=0, padx=padding_x, pady=padding_y)
-
-        file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        file_text.insert(tk.INSERT, '\nOnce you are done, press create experiment to save an experiment file')
-        file_text.tag_configure("center", justify='center')
-        file_text.tag_add("center", 1.0, "end")
-        file_text.config(state = 'disabled')
-        file_text.grid(row=7, column=0, padx=padding_x, pady=padding_y)
-
-        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_files_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
-
-        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
-        self.selected_files_info_text.config(state = 'disabled')
-        self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
 
     def load_files(self):
         logger.info('Page_Create_Experiment: load_files')
@@ -801,13 +860,178 @@ class Page_Create_Experiment(Page):
         self.selected_files_info_text.insert(tk.INSERT, display_text)
         self.selected_files_info_text.config(state = 'disabled')
 
-    def create_experiment(self):
-        logger.info('Page_Create_Experiment: create_experiment')
-        
+class Page_Naming_Paradigm(Paradigm_Creation_Page):
+    selected_files_info_text = None
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.init_elements()
+
+    def init_elements(self):
+        padding_x = 10
+        padding_y = 10
+
+        stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        stimulus_text.insert(tk.INSERT, '\nSelect Stimulus Type')
+        stimulus_text.tag_configure("center", justify='center')
+        stimulus_text.tag_add("center", 1.0, "end")
+        stimulus_text.config(state = 'disabled')
+        stimulus_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+
+        options = ['Video', 'Image']
+        default_option = options[0]
+        self.option_selected = tk.StringVar(self)
+        option_menu = tk.OptionMenu(self, self.option_selected, *options)
+        self.option_selected.set(default_option)
+        option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
+        option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+
+        filestring = '''
+        Please Select the files to use for stimuli. These will be used during the experiment.
+        --For videos or images, select the video or image files from your computer.
+        '''
+
+        select_text = tk.Text(self, font = default_font, height = 4, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_text.insert(tk.INSERT, filestring)
+        select_text.tag_configure("center", justify='center')
+        select_text.tag_add("center", 1.0, "end")
+        select_text.config(state = 'disabled')
+        select_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+
+        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
+        self.selected_files_info_text.config(state = 'disabled')
+        self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
+
+    def dict_data(self):
         data = {}
-        data['paradigm'] = self.paradigm_option_selected.get()
         data['stimulus_type'] = self.option_selected.get()
         data['file'] = self.files
+        return data
+
+class Page_Lexical_Priming(Paradigm_Creation_Page):
+    selected_files_info_text = None
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.init_elements()
+
+    def init_elements(self):
+        padding_x = 10
+        padding_y = 10
+
+        stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        stimulus_text.insert(tk.INSERT, '\nSelect Stimulus Type')
+        stimulus_text.tag_configure("center", justify='center')
+        stimulus_text.tag_add("center", 1.0, "end")
+        stimulus_text.config(state = 'disabled')
+        stimulus_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+
+        options = ['Video', 'Image']
+        default_option = options[0]
+        self.option_selected = tk.StringVar(self)
+        option_menu = tk.OptionMenu(self, self.option_selected, *options)
+        self.option_selected.set(default_option)
+        option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
+        option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+
+        filestring = '''
+        Please Select the files to use for stimuli. These will be used during the experiment.
+        --For videos or images, select the video or image files from your computer.
+        '''
+
+        select_text = tk.Text(self, font = default_font, height = 4, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_text.insert(tk.INSERT, filestring)
+        select_text.tag_configure("center", justify='center')
+        select_text.tag_add("center", 1.0, "end")
+        select_text.config(state = 'disabled')
+        select_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+
+        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
+        self.selected_files_info_text.config(state = 'disabled')
+        self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
+
+    def dict_data(self):
+        data = {}
+        data['stimulus_type'] = self.option_selected.get()
+        data['file'] = self.files
+        return data
+
+class Page_Create_Experiment(Page):
+    files = []
+    option_selected = None
+    paradigm_option_selected = None
+    entry = None
+    selected_files_info_text = None
+    page_naming_paradigm = None
+    page_lexical_priming = None
+
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.init_elements()
+        
+    def init_elements(self):
+        arrange_header_in(self)
+
+        padding_x = 10
+        padding_y = 10
+
+        self.page_naming_paradigm = Page_Naming_Paradigm(self, background = settings_dict['backcolor'])
+        self.page_lexical_priming = Page_Lexical_Priming(self, background = settings_dict['backcolor'])
+
+        paradigm_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        paradigm_text.insert(tk.INSERT, '\nSelect Experiemnt Paradigm')
+        paradigm_text.tag_configure("center", justify='center')
+        paradigm_text.tag_add("center", 1.0, "end")
+        paradigm_text.config(state = 'disabled')
+        paradigm_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+
+        paradigm_options = ['Naming', 'Lexcial Priming']
+        default_paradigm_option = paradigm_options[0]
+        self.paradigm_option_selected = tk.StringVar(self)
+        self.paradigm_option_selected.trace('w', self.paradigm_selected)
+        paradigm_option_menu = tk.OptionMenu(self, self.paradigm_option_selected, *paradigm_options)
+        self.paradigm_option_selected.set(default_paradigm_option)
+        paradigm_option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
+        paradigm_option_menu.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+
+        #Container
+        container = tk.Frame(self, width = width, height = int(height / 1.25), background = settings_dict['backcolor'])
+        container.grid(row=3, column=0, rowspan = 10, columnspan = 400, padx=0, pady=padding_y)
+
+        #Place pages in the container frame
+        self.page_naming_paradigm.place(in_=container)
+        self.page_lexical_priming.place(in_=container)
+
+        paradigm_option_string = self.paradigm_option_selected.get()
+        if paradigm_option_string == 'Naming':
+            self.page_naming_paradigm.show()
+        elif paradigm_option_string == 'Lexcial Priming':
+            self.page_lexical_priming.show()
+
+        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_files_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
+
+    def create_experiment(self):
+        logger.info('Page_Create_Experiment: create_experiment')
+
+        paradigm_option_string = self.paradigm_option_selected.get()
+        exp_data = None
+        if paradigm_option_string == 'Naming':
+            exp_data = self.page_naming_paradigm.dict_data()
+        elif paradigm_option_string == 'Lexcial Priming':
+            exp_data = self.page_lexical_priming.dict_data()
+        
+        data = {}
+        data['paradigm'] = paradigm_option_string
+        data.update(exp_data)
 
         try:
             experimant_name = filedialog.asksaveasfilename(initialdir = "/", title = "Save file", filetypes = (("experiment files","*.exp"), ("all files","*.*")))
@@ -817,6 +1041,17 @@ class Page_Create_Experiment(Page):
             message = 'Error: Could not write experiment file'
             logger.error(message + ': ' + str(err))
             pop_up(message)
+
+    def paradigm_selected(self, name, index, mode):
+        paradigm_option_string = self.paradigm_option_selected.get()
+        logger.info('Page_Create_Experiment: paradigm_selected: paradigm_option_string=' + paradigm_option_string)
+        
+        if paradigm_option_string == 'Naming':
+            self.page_naming_paradigm.lift()
+            self.page_lexical_priming.lower()
+        elif paradigm_option_string == 'Lexcial Priming':
+            self.page_lexical_priming.lift()
+            self.page_naming_paradigm.lower()
 
 class Page_Start_Experiment(Page):
     def __init__(self, *args, **kwargs):
@@ -838,7 +1073,7 @@ class Page_Start_Experiment(Page):
         file_text.config(state = 'disabled')
         file_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-        select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_file_button = tk.Button(self, text ="Choose file", command = self.load_experiment, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
         select_file_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
 
         dir_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
@@ -848,7 +1083,7 @@ class Page_Start_Experiment(Page):
         dir_text.config(state = 'disabled')
         dir_text.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
-        select_file_button = tk.Button(self, text ="Choose output folder", command = self.load_dir, font = default_font, height = 3, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_file_button = tk.Button(self, text ="Choose output folder", command = self.load_dir, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
         select_file_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
 
         entry_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
