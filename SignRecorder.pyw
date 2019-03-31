@@ -45,7 +45,9 @@ key_tracker = None
 #Settings
 settings_dict_defaults = {'backcolor': '#000000',
     'ui_element_color': '#888888',
-    'forecolor': '#000000'}
+    'forecolor': '#000000',
+    'draggable_color0': '#888888',
+    'draggable_color1': '#aaaaaa'}
 settings_dict = {}
 
 #text
@@ -800,6 +802,108 @@ def arrange_header_in(page):
 
     button_frame.grid(row=0, column=0)
 
+class Widget_Drag_Controller():
+    '''
+    This class handles dragging widgets that below to a common set in such a way as to change their positions in that set. So if the numbers
+    1, 2, 3 are shown on screen, it's goal is to allow you to click on, say, the 3 and move it in from of the one, and then to read back that
+    array in the new order.
+    '''
+    item = None
+    callback = None
+
+    def __init__(self, item, widgets, callback):
+        '''
+        Parameters:
+            item: The specific item out of the set that can be dragged
+            widgets: The set of all widgets that are ordered on the screen and can be dragged
+            callback: the function to call after a drag and drop. It should accept a list of files in the new order as a parameter.
+        '''
+
+        self.item = item
+        self.widgets = widgets
+        self.callback = callback
+        self.item.bind("<ButtonPress-1>", self.on_start)
+        self.item.bind("<B1-Motion>", self.on_move)
+        self.item.bind("<ButtonRelease-1>", self.on_end)
+        self.item.configure(cursor="hand1")
+
+    def on_start(self, event):
+        self.last_seen = self.item
+
+    def on_move(self, event):
+        pass
+
+    def on_end(self, event):
+        x, y = event.widget.winfo_pointerxy()
+        target = event.widget.winfo_containing(x, y)
+        '''target_height = target.winfo_height()
+        target_y = target.winfo_rooty()
+        move_above_target = abs((target_y - y) / target_height) < .5'''
+
+        move_to = self.widgets.index(target)
+        move_from = self.widgets.index(self.item)
+
+        if move_to > move_from:
+            self.widgets.insert(move_to + 1, self.item)
+            del self.widgets[move_from]
+        elif move_to < move_from:
+            self.widgets.insert(move_to, self.item)
+            del self.widgets[move_from + 1]
+
+        files = [widget.cget('text') for widget in self.widgets]
+        self.callback(files)
+        
+class File_Arrangement_Region():
+    canvas = None
+    display_frame = None
+    elements = []
+    width = 0
+    height = 0
+    owner = None
+    widget_drag_controllers = []
+
+    def __init__(self, owner, root, width, height, row, column, rowspan = 1, columnspan = 1):
+        padding_x = 10
+        padding_y = 10
+        self.width = width
+        self.height = height
+        self.owner = owner
+
+        outer_frame = tk.Frame(root, background = settings_dict['ui_element_color'])
+        outer_frame.grid(row = row, column = column, rowspan = rowspan, columnspan = columnspan, padx=padding_x, pady=padding_y)
+
+        self.canvas = tk.Canvas(outer_frame, background = settings_dict['ui_element_color'])
+        self.display_frame = tk.Frame(self.canvas, background = settings_dict['ui_element_color'])
+        scrollbar_y = tk.Scrollbar(outer_frame, orient = 'vertical',command = self.canvas.yview)
+        scrollbar_x = tk.Scrollbar(outer_frame, orient = 'horizontal',command = self.canvas.xview)
+        self.canvas.configure(yscrollcommand = scrollbar_y.set)
+        self.canvas.configure(xscrollcommand = scrollbar_x.set)
+
+        scrollbar_y.pack(side = 'right',fill = 'y')
+        scrollbar_x.pack(side = 'bottom', fill = 'x')
+        self.canvas.pack(side = 'left')
+        self.canvas.create_window((0, 0), window = self.display_frame, anchor = 'nw')
+        self.display_frame.bind('<Configure>', self.scroll_configure)
+    
+    def scroll_configure(self, event):
+        self.canvas.configure(scrollregion = self.canvas.bbox('all'), width = self.width, height = self.height)
+
+    def set_elements(self, files):
+        #Remove old elements
+        self.widget_drag_controllers.clear()
+        for child in self.display_frame.winfo_children():
+            child.destroy()
+
+        #Add new elements
+        for i in range(len(files)):
+            highlight = settings_dict['draggable_color' + str(i % 2)]
+            tk.Label(self.display_frame, text=files[i], font = default_font, anchor = 'w', background = highlight).pack(side = 'top', fill = 'x')
+        for label in self.display_frame.winfo_children():
+            self.widget_drag_controllers.append(Widget_Drag_Controller(label, self.display_frame.winfo_children(), self.update_owner_data))
+            
+    def update_owner_data(self, files):
+        self.owner.change_files(files)
+
 class Page(tk.Frame):
     button_frame = None
 
@@ -849,19 +953,8 @@ class Paradigm_Creation_Page(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
 
-    def load_files(self):
-        logger.info('Page_Create_Experiment: load_files')
-        self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Files' + self.option_selected.get() + ' files')
-        display_text = 'Files selected:\n'
-        for file_name in self.files:
-            display_text += os.path.basename(file_name) + '\n'
-        self.selected_files_info_text.config(state = 'normal')
-        self.selected_files_info_text.delete(1.0, tk.END)
-        self.selected_files_info_text.insert(tk.INSERT, display_text)
-        self.selected_files_info_text.config(state = 'disabled')
-
 class Page_Naming_Paradigm(Paradigm_Creation_Page):
-    selected_files_info_text = None
+    file_arrangement_region = None
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -901,10 +994,18 @@ class Page_Naming_Paradigm(Paradigm_Creation_Page):
         select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
         select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
 
-        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
-        self.selected_files_info_text.config(state = 'disabled')
-        self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
+        self.file_arrangement_region = File_Arrangement_Region(self, self, width / 2, height / 1.5, 0, 1, 20)
+        self.file_arrangement_region.set_elements(['Selected Files:'])
+
+    def load_files(self):
+        logger.info('Page_Naming_Paradigm: load_files')
+        self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Files' + self.option_selected.get() + ' files')
+        display_strs = self.files#[os.path.basename(file_name) for file_name in self.files]
+        self.file_arrangement_region.set_elements(display_strs)
+
+    def change_files(self, files):
+        self.files = files
+        self.file_arrangement_region.set_elements(self.files)
 
     def dict_data(self):
         data = {}
@@ -957,6 +1058,9 @@ class Page_Lexical_Priming(Paradigm_Creation_Page):
         self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
         self.selected_files_info_text.config(state = 'disabled')
         self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
+
+    def load_files(self):
+        pass
 
     def dict_data(self):
         data = {}
