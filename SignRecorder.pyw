@@ -810,6 +810,7 @@ class Widget_Drag_Controller():
     '''
     item = None
     callback = None
+    move_frame = None
 
     def __init__(self, item, widgets, callback):
         '''
@@ -829,11 +830,15 @@ class Widget_Drag_Controller():
 
     def on_start(self, event):
         self.last_seen = self.item
+        self.move_frame = tk.Frame()
+        move_label = tk.Label(self.move_frame, text = self.item.cget('text'), font = self.item.cget('font'), anchor = self.item.cget('anchor'), background = self.item.cget('background')).pack(side = 'top', fill = 'x')
 
     def on_move(self, event):
-        pass
+        x, y = event.widget.winfo_pointerxy()
+        self.move_frame.place(x = x, y = int(y - (self.item.winfo_height() + self.item.winfo_height() / 2)))
 
     def on_end(self, event):
+        self.move_frame.destroy()
         x, y = event.widget.winfo_pointerxy()
         target = event.widget.winfo_containing(x, y)
         '''target_height = target.winfo_height()
