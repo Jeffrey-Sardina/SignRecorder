@@ -41,6 +41,9 @@ pop_up_window = None
 width = 0
 height = 0
 key_tracker = None
+padding_x = 10
+padding_y = 10
+default_font = 20
 
 #Settings
 settings_dict_defaults = {'backcolor': '#000000',
@@ -50,8 +53,6 @@ settings_dict_defaults = {'backcolor': '#000000',
     'draggable_color1': '#aaaaaa'}
 settings_dict = {}
 
-#text
-default_font = 20
 
 '''
 Initialization
@@ -67,6 +68,25 @@ def main():
     load_config()
     init_gui()
 
+def init_logging():
+    '''
+    Initializes the loggins system. The logging system is intended to allow the program to save data about each run to disk,
+    and the logger itself will re-write any existing logs each time so as to conserve space and avoid cluttering the running
+    directory with files. This method also triggers the first log write.
+
+    Most methods in this program trigger a log call. For simplicity, the calls to logging are not mentioned in the method
+    descriptions in general.
+    '''
+
+    global logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler('SignRecorder.log', mode='w')
+    logger.addHandler(file_handler)
+    file_handler_format = logging.Formatter('%(levelname)s - %(asctime)s - %(message)s')
+    file_handler.setFormatter(file_handler_format)
+    logger.info('init_logging: Starting log')
+
 def load_config():
     '''
     Loads the user settings from the config.csv file. If the file is not pressent or is corrputed, it will use default values
@@ -74,11 +94,14 @@ def load_config():
     '''
 
     global settings_dict
+
+    logger.info('load_config:')
+
     try:
         with open('config.json', 'r') as config:
             settings_dict = json.loads(config.read())
     except Exception as err:
-        message = 'Could not read config file'
+        message = 'load_config: Could not read config file'
         logger.error(message + ': ' + str(err))
         recover_config_file()
 
@@ -98,27 +121,8 @@ def recover_config_file():
             print(json.dumps(settings_dict_defaults), file=config)
     except Exception as err:
         message = 'Attempt to recover config file failed: Could not write new config file' 
-        logger.critical(message + ': ' + str(err))
+        logger.critical('recover_config_file:' + message + ': ' + str(err))
         pop_up(message)
-
-def init_logging():
-    '''
-    Initializes the loggins system. The logging system is intended to allow the program to save data about each run to disk,
-    and the logger itself will re-write any existing logs each time so as to conserve space and avoid cluttering the running
-    directory with files. This method also triggers the first log write.
-
-    Most methods in this program trigger a log call. For simplicity, the calls to logging are not mentioned in the method
-    descriptions in general.
-    '''
-
-    global logger
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    file_handler = logging.FileHandler('SignRecorder.log', mode='w')
-    logger.addHandler(file_handler)
-    file_handler_format = logging.Formatter('%(levelname)s - %(asctime)s - %(message)s')
-    file_handler.setFormatter(file_handler_format)
-    logger.info('Starting log')
 
 def find_webcams(search_num):
     '''
@@ -138,7 +142,7 @@ def find_webcams(search_num):
         if webcam_i.isOpened():
             webcam_num += 1
             webcam_i.release()
-        logger.info(str(webcam_num) + ' webcams found for recording')
+        logger.info('find_webcams: ' + str(webcam_num) + ' webcams found for recording')
 
 def init_gui():
     '''
@@ -152,6 +156,8 @@ def init_gui():
     '''
 
     global width, height, window, key_tracker, main_frame
+
+    logger.info('init_gui:')
 
     #Master window
     window = tk.Tk()
@@ -177,6 +183,78 @@ def init_gui():
     
     #Show window
     window.mainloop()
+
+
+'''
+Core backend program functionality
+'''
+def pop_up(message):
+    '''
+    Creates a pop-up window to display a message. Please only call this method for important errors such as files that fail
+    to load--each pop up will take focue from the main window and thus disrupt the user.
+    '''
+
+    global pop_up_window
+
+    logger.info('pop_up: message=' + message)
+
+    pop_up_window = tk.Tk()
+    pop_up_window.wm_title('Message')
+    pop_up_window.config(background = settings_dict['backcolor'])
+
+    pop_up_text = tk.Text(pop_up_window, font = default_font, height = 5, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+    pop_up_text.insert(tk.INSERT, message)
+    pop_up_text.config(state = 'disabled')
+    pop_up_text.grid(row = 0, column = 0, padx = padding_x, pady = padding_y)
+
+    select_files_button = tk.Button(pop_up_window, text ="Close", command = pop_up_window.destroy, font = default_font, height = 3, width = 10, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+    select_files_button.grid(row=1, column=0)
+
+def write_out(path, name, message):
+    '''
+    Writes out a meta-file that contains metadata about the recorded video. The data is:
+        stimulus_name: the name of the file used as a stimulus for this recording
+        display_time: the amount of time the stimulus was displayed before recording
+        recording_time: the time length of the recording
+        total_time: the total time for this step of the experiment, = display_time + recording_time
+    '''
+
+    logger.info('write_out: writing meta file at path=' + path + ' with name=' + name)
+    file_name = os.path.join(path, name + '.meta.csv')
+    try:
+        if os.path.exists(file_name):
+            message = 'Cannot overwrite existing meta file: '
+            logger.critical('write_out: ' + message + file_name)
+            pop_up(message + '\n' + file_name)
+            raise Exception(message + file_name)
+        with open(file_name, 'w') as meta:
+            print(message, file=meta)
+    except Exception as err:
+        message = 'Failed to write out file: ' + file_name
+        logger.critical('write_out: ' + message + ': ' + str(err))
+        pop_up(message)
+        raise Exception(message)
+
+def on_close(close = True):
+    '''
+    Handles properly closing the program and its spawned resources. As much as possible, all close events should be routed to
+    this method rather than immediately calling an exit function.
+
+    Parameter:
+        close: Whether this method should close the program. If false, all program resources still will be cleared but the program
+        will not be closed. This should be done when a critical exception occurs so the exception can still be raised.
+    '''
+
+    logger.info('on_close: Cleaning resources and closing' if close else 'on_close: Cleaning resources to prepare for closing')
+
+    window.destroy()
+    try:
+        recorder.end()
+    except:
+        pass
+    if close:
+        sys.exit(0)
+
 
 '''
 Experiment and data collection
@@ -238,7 +316,7 @@ class Naming_Experiment(Experiment):
                 stimulus_type, which tells whether the stimulus is Image or Video
 
         '''
-        self.stimuli = data['file']
+        self.stimuli = data['stimulus_files']
         self.stimulus_type = data['stimulus_type']
         self.display_timer = Timer()
         self.recording_timer = Timer()
@@ -257,8 +335,10 @@ class Naming_Experiment(Experiment):
         if self.recording_timer.active():
             self.recording_timer.end()
         if self.current_stimulus >= len(self.stimuli):
+            message = 'All data for ' + str(self.subject_id) + ' has been collected'
+            pop_up(message)
+            logger.info('Naming_Experiment: on_input_press: ' + message)
             main_frame.select_start_experiment()
-            pop_up('All data for ' + self.subject_id + ' has been collected')
             self.reset_for_next_subject()
         else:
             self.load_stimulus()
@@ -282,7 +362,7 @@ class Naming_Experiment(Experiment):
             recorder = Recorder(self.subject_id + '-' + self.video_id, True)
             recorder.begin()
         else:
-            logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
+            logger.warning('Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded')
 
     def load_stimulus(self):
         '''
@@ -294,7 +374,7 @@ class Naming_Experiment(Experiment):
         '''
 
         global keep_displaying
-        logger.info('load_stimulus: current_stimulus=' + str(self.current_stimulus) + ' stimulus type=' + str(self.stimulus_type))
+        logger.info('Naming_Experiment: load_stimulus: current_stimulus=' + str(self.current_stimulus) + ' stimulus type=' + str(self.stimulus_type))
 
         keep_displaying = True
         stimulus = self.stimuli[self.current_stimulus].strip()
@@ -312,10 +392,16 @@ class Naming_Experiment(Experiment):
         Resets the environment so that the next subject can begin the experiment.
         '''
 
-        logger.info('reset_for_next_subject: Resetting the environment for the next subject')
+        logger.info('Naming_Experiment: reset_for_next_subject: Resetting the environment for the next subject')
 
         key_tracker.reset()
         self.subject_id = None
+        self.recording = False
+        self.last_video_id = None
+        self.video_id = None
+        self.keep_displaying = True
+        self.current_stimulus = 0
+        self.can_start_recording = True
         subject_id_entry_box.delete(0, last='end')
 
 class Lexical_Priming_Experiment(Experiment):
@@ -324,6 +410,7 @@ class Lexical_Priming_Experiment(Experiment):
     subject_id = None
     stimulus_type = None
     primer_type = None
+    primer_time = 5
 
     #Experiment Running
     recording = False
@@ -331,7 +418,6 @@ class Lexical_Priming_Experiment(Experiment):
     video_id = None
     keep_displaying = True
     current_round = 0
-    primer_time = 5
     can_start_recording = True
     
     #Timing
@@ -346,16 +432,16 @@ class Lexical_Priming_Experiment(Experiment):
 
         Parameters:
             data: A dictionary containing experiment data. This should contain the follwoing keys:
-                file, which contains a tuple of: (absolute path of the primer, that of the stimulus);
+                files, which contains a tuple of: (absolute path of the primer, that of the stimulus);
                 stimulus_type, which tells whether the stimulus is Image or Video;
                 primer_type, which tells whether the primer is Image or Video;
                 primer_time, which contains the time to show the primer (in seconds, only needed if primer_time is Image)
 
         '''
-        self.stimuli_tuples = data['file']
+        self.stimuli_tuples = data['files']
         self.stimulus_type = data['stimulus_type']
         self.primer_type = data['primer_type']
-        self.primer_time = data['primer_time'] if primer_type == 'Image' else 0
+        self.primer_time = data['primer_time'] if self.primer_type == 'Image' else 0
         self.display_timer = Timer()
         self.recording_timer = Timer()
 
@@ -368,7 +454,7 @@ class Lexical_Priming_Experiment(Experiment):
         If there are no more stimuli to run, the program displays a pop-up message stating that data collection is complete.
         '''
 
-        logger.info('Naming_Experiment: on_input_press: current_stimulus=' + str(self.current_round) + ' recording=' + str(self.recording))
+        logger.info('Lexical_Priming_Experiment: on_input_press: current_stimulus=' + str(self.current_round) + ' recording=' + str(self.recording))
         self.recording = False
         if self.recording_timer.active():
             self.recording_timer.end()
@@ -388,7 +474,7 @@ class Lexical_Priming_Experiment(Experiment):
         if self.subject_id == None:
             self.subject_id = subject_id_entry_box.get().strip()
         if self.can_start_recording and self.current_round < len(self.stimuli_tuples):
-            logger.info('Naming_Experiment: on_input_release: current_round=' + str(self.current_round) + '; recording starting')
+            logger.info('Lexical_Priming_Experiment: on_input_release: current_round=' + str(self.current_round) + '; recording starting')
             self.last_video_id = self.video_id
             self.video_id = os.path.basename(self.stimuli_tuples[self.current_round][0].strip()) + '-' + os.path.basename(self.stimuli_tuples[self.current_round][1].strip())
             self.recording = True
@@ -398,7 +484,7 @@ class Lexical_Priming_Experiment(Experiment):
             recorder = Recorder(self.subject_id + '-' + self.video_id, True)
             recorder.begin()
         else:
-            logger.warning('on_button_space_release: can_start_recording is False, video must end before the signer may be recorded')
+            logger.warning('Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded')
 
     def load_primer(self):
         '''
@@ -410,7 +496,7 @@ class Lexical_Priming_Experiment(Experiment):
         '''
 
         global keep_displaying
-        logger.info('load_stimulus: current_stimulus=' + str(self.current_round) + ' stimulus type=' + str(self.stimulus_type))
+        logger.info('Lexical_Priming_Experiment: load_stimulus: current_stimulus=' + str(self.current_round) + ' stimulus type=' + str(self.stimulus_type))
 
         keep_displaying = True
         primer = self.stimuli_tuples[self.current_round][0].strip()
@@ -441,112 +527,18 @@ class Lexical_Priming_Experiment(Experiment):
         Resets the environment so that the next subject can begin the experiment.
         '''
 
-        logger.info('reset_for_next_subject: Resetting the environment for the next subject')
+        logger.info('Lexical_Priming_Experiment: reset_for_next_subject: Resetting the environment for the next subject')
 
         key_tracker.reset()
         self.subject_id = None
+        self.recording = False
+        self.last_video_id = None
+        self.video_id = None
+        self.keep_displaying = True
+        self.current_stimulus = 0
+        self.can_start_recording = True
         subject_id_entry_box.delete(0, last='end')
 
-def pop_up(message):
-    '''
-    Creates a pop-up window to display a message. Please only call this method for important errors such as files that fail
-    to load--each pop up will take focue from the main window and thus disrupt the user.
-    '''
-
-    global pop_up_window
-    padding_x = 10
-    padding_y = 10
-
-    pop_up_window = tk.Tk()
-    pop_up_window.wm_title('Message')
-    pop_up_window.config(background = settings_dict['backcolor'])
-
-    pop_up_text = tk.Text(pop_up_window, font = default_font, height = 5, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-    pop_up_text.insert(tk.INSERT, message)
-    pop_up_text.config(state = 'disabled')
-    pop_up_text.grid(row = 0, column = 0, padx = padding_x, pady = padding_y)
-
-    select_files_button = tk.Button(pop_up_window, text ="Close", command = pop_up_window.destroy, font = default_font, height = 3, width = 10, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-    select_files_button.grid(row=1, column=0)
-
-    pop_up_window.mainloop()
-
-def write_out(path, name, message):
-    '''
-    Writes out a meta-file that contains metadata about the recorded video. The data is:
-        stimulus_name: the name of the file used as a stimulus for this recording
-        display_time: the amount of time the stimulus was displayed before recording
-        recording_time: the time length of the recording
-        total_time: the total time for this step of the experiment, = display_time + recording_time
-    '''
-
-    logger.info('writing meta file at path=' + path + ' with name=' + name)
-    file_name = os.path.join(path, name + '.meta.csv')
-    try:
-        if os.path.exists(file_name):
-            message = 'Cannot overwrite existing meta file: '
-            logger.critical(message + file_name)
-            pop_up(message + '\n' + file_name)
-            raise Exception(message + file_name)
-        with open(file_name, 'w') as meta:
-            print(message, file=meta)
-    except Exception as err:
-        message = 'write_out: Failed to write out file: ' + file_name
-        logger.critical(message + ': ' + str(err))
-        pop_up(message)
-        raise Exception(message)
-
-def on_close(close = True):
-    '''
-    Handles properly closing the program and its spawned resources. As much as possible, all close events should be routed to
-    this method rather than immediately calling an exit function.
-
-    Parameter:
-        close: Whether this method should close the program. If false, all program resources still will be cleared but the program
-        will not be closed. This should be done when a critical exception occurs so the exception can still be raised.
-    '''
-
-    logger.info('on_close: Cleaning resources and closing' if close else 'on_close: Cleaning resources to prepare for closing')
-
-    window.destroy()
-    try:
-        recorder.end()
-    except:
-        pass
-    if close:
-        sys.exit(0)
-
-def get_proper_resize_dimensions_for_fullscreen(img):
-    '''
-    This method gets the largest-area resize of an image to be displayed on a fullscreen display without allowing any of the
-    image to overflow off-screen. It maintains the image aspect ratio.
-    '''
-
-    #Get image dimensions
-    original_width = img.width
-    original_height = img.height
-
-    #Get the scalars that transform the original size into the fullscreen dize
-    width_scalar = width / original_width
-    height_scalar = height / original_height
-
-    #Our goal is to make the image as largs as possible without goinf over the screen size.
-    #We also do not want to loose out aspect ratio. So let's see whether using the width_scalar
-    #   or the height_scalar does that best
-    width_based_scaling_height = original_height * width_scalar
-    width_based_scaling_valid = True
-    if width_based_scaling_height > height:
-        width_based_scaling_valid = False
-
-    height_based_scaling_width = original_width * height_scalar
-    height_based_scaling_valid = True
-    if height_based_scaling_width > width:
-        height_based_scaling_valid = False
-
-    if width_based_scaling_valid and not height_based_scaling_valid:
-        return width, width_based_scaling_height
-    else:
-        return height_based_scaling_width, height
 
 '''
 Data and user-input
@@ -568,7 +560,7 @@ class Recorder():
             mirror: Whether the recording should be mirrored when saved to disk
         '''
 
-        logger.info('Recorder.__init__: name=' + self.name + ' mirror=' + str(mirror))
+        logger.info('Recorder: __init__: name=' + self.name + ' mirror=' + str(mirror))
         self.name = name
         self.mirror = mirror
 
@@ -593,7 +585,7 @@ class Recorder():
         file_name = os.path.join(out_dir, self.name + '.avi')
         if os.path.exists(file_name):
             message = 'Cannot overwrite existing video file: ' 
-            logger.critical(message + file_name)
+            logger.critical('Recorder: begin: ' + message + file_name)
             pop_up(message + '\n' + file_name)
             raise Exception(message + file_name)
         else:
@@ -601,11 +593,11 @@ class Recorder():
 
         if not self.web_cam.isOpened():
             message = 'Could not open webcam'
-            logger.warning(message)
+            logger.warning('Recorder: begin: ' + message)
             pop_up(message)
             raise Exception(message)
     
-        logger.info('Recorder.begin: starting recording loop')
+        logger.info('Recorder: begin: starting recording loop')
         while self.web_cam.isOpened():
             # Capture frame-by-frame
             is_reading, frame = self.web_cam.read()
@@ -628,7 +620,7 @@ class Recorder():
         Ends the recording and releases resources.
         '''
 
-        logger.info('Recorder.end: recording ended, releasing resources')
+        logger.info('Recorder: end: recording ended, releasing resources')
         self.web_cam.release()
         self.video_writer.release()
 
@@ -640,7 +632,7 @@ class Video_Displayer():
     callback = None
 
     def __init__(self, file_name, callback = None):
-        logger.info('Video_Displayer.__init__: file_name=' + file_name)
+        logger.info('Video_Displayer: __init__: file_name=' + file_name)
         self.file_name = file_name
         self.callback = callback
 
@@ -649,11 +641,11 @@ class Video_Displayer():
         self.video_input = cv2.VideoCapture(self.file_name)
         self.fps = int(self.video_input.get(cv2.CAP_PROP_FPS))
         self.display = main_frame.page_show_stimuli.display_region
-        logger.info('Video_Displayer.begin ' + self.file_name + ' running at fps=' + str(int(self.fps)))
+        logger.info('Video_Displayer: begin: ' + self.file_name + ' running at fps=' + str(int(self.fps)))
 
         if not self.video_input.isOpened():
             message = 'Could not open video file for reading'
-            logger.warning(message)
+            logger.warning('Video_Displayer: begin: ' + message)
             pop_up(message)
             raise Exception(message)
 
@@ -676,18 +668,18 @@ class Video_Displayer():
             if self.video_input.isOpened():
                 self.display.after(self.fps, self.run_frame)
             else:
-                self.end('Video_Displayer.run_frame: display ended due to unexpected closure of video_input')
+                self.end('Video_Displayer: run_frame: display ended due to unexpected closure of video_input')
                 experiment.can_start_recording = True
                 if not self.callback == None:
                     self.callback()
         else:
-            self.end('Video_Displayer.run_frame: display ended naturally')
+            self.end('Video_Displayer: run_frame: display ended naturally')
             experiment.can_start_recording = True
             if not self.callback == None:
                 self.callback()
             
 
-    def end(self, message = 'Video_Displayer.run_frame ended'):
+    def end(self, message = 'Video_Displayer: end: run_frame ended'):
         logger.info(message)
         self.video_input.release()
         if not self.callback == None:
@@ -698,10 +690,11 @@ class Image_Displayer():
     display = None
 
     def __init__(self, file_name):
-        logger.info('Image_Displayer.__init__ ' + file_name)
+        logger.info('Image_Displayer: __init__: ' + file_name)
         self.file_name = file_name
 
     def begin(self):
+        logger.info('Image_Displayer: begin:')
         self.display = main_frame.page_show_stimuli.display_region
         main_frame.select_show_stimuli()
 
@@ -727,10 +720,11 @@ class KeyTracker():
     last_event_was_press = False
 
     def track(self, key):
-        logger.info('KeyTracker.track: key=' + key)
+        logger.info('KeyTracker: track: key=' + key)
         self.key = key
 
     def reset(self):
+        logger.info('KeyTracker: reset: resetting')
         self.last_press_time = 0
         self.last_release_time = 0
         self.last_release_callback_time = 0
@@ -738,13 +732,13 @@ class KeyTracker():
         self.last_event_was_press = False
 
     def is_pressed(self):
-        return time.time() - self.last_press_time < .1 #In seconds
+        return time.time() - self.last_press_time < .01 #In seconds
 
     def report_key_press(self, event):
         if not self.last_event_was_press and event.keysym == self.key:
             self.last_event_was_press = True
             if not self.is_pressed():
-                logger.info('KeyTracker.report_key_press: valid keypress detected: key=' + self.key)
+                logger.info('KeyTracker: report_key_press: valid keypress detected: key=' + self.key)
                 self.last_press_time = time.time()
                 on_key_press(event)
             else:
@@ -754,7 +748,7 @@ class KeyTracker():
         if self.last_event_was_press and event.keysym == self.key:
             self.last_event_was_press = False
             self.last_release_time = time.time()
-            timer = threading.Timer(.15, self.report_key_release_callback, args=[event]) #In seconds
+            timer = threading.Timer(.015, self.report_key_release_callback, args=[event]) #In seconds
             timer.start()
     
     def report_key_release_callback(self, event):
@@ -763,7 +757,7 @@ class KeyTracker():
             self.first_callback_call = False
         if not self.is_pressed():
             self.last_release_callback_time = time.time()
-            logger.info('KeyTracker.report_key_release_callback: key=' + self.key + ', is released= ' + str((not self.is_pressed())))
+            logger.info('KeyTracker: report_key_release_callback: key=' + self.key + ', is released= ' + str((not self.is_pressed())))
             if not self.is_pressed():
                 on_key_release(event)
             
@@ -802,6 +796,38 @@ def arrange_header_in(page):
 
     button_frame.grid(row=0, column=0)
 
+def get_proper_resize_dimensions_for_fullscreen(img):
+    '''
+    This method gets the largest-area resize of an image to be displayed on a fullscreen display without allowing any of the
+    image to overflow off-screen. It maintains the image aspect ratio.
+    '''
+
+    #Get image dimensions
+    original_width = img.width
+    original_height = img.height
+
+    #Get the scalars that transform the original size into the fullscreen dize
+    width_scalar = width / original_width
+    height_scalar = height / original_height
+
+    #Our goal is to make the image as largs as possible without goinf over the screen size.
+    #We also do not want to loose out aspect ratio. So let's see whether using the width_scalar
+    #   or the height_scalar does that best
+    width_based_scaling_height = original_height * width_scalar
+    width_based_scaling_valid = True
+    if width_based_scaling_height > height:
+        width_based_scaling_valid = False
+
+    height_based_scaling_width = original_width * height_scalar
+    height_based_scaling_valid = True
+    if height_based_scaling_width > width:
+        height_based_scaling_valid = False
+
+    if width_based_scaling_valid and not height_based_scaling_valid:
+        return width, width_based_scaling_height
+    else:
+        return height_based_scaling_width, height
+
 class Widget_Drag_Controller():
     '''
     This class handles dragging widgets that below to a common set in such a way as to change their positions in that set. So if the numbers
@@ -831,7 +857,7 @@ class Widget_Drag_Controller():
     def on_start(self, event):
         self.last_seen = self.item
         self.move_frame = tk.Frame()
-        move_label = tk.Label(self.move_frame, text = self.item.cget('text'), font = self.item.cget('font'), anchor = self.item.cget('anchor'), background = self.item.cget('background')).pack(side = 'top', fill = 'x')
+        tk.Label(self.move_frame, text = self.item.cget('text'), font = self.item.cget('font'), anchor = self.item.cget('anchor'), background = self.item.cget('background')).pack(side = 'top', fill = 'x')
 
     def on_move(self, event):
         x, y = event.widget.winfo_pointerxy()
@@ -841,9 +867,6 @@ class Widget_Drag_Controller():
         self.move_frame.destroy()
         x, y = event.widget.winfo_pointerxy()
         target = event.widget.winfo_containing(x, y)
-        '''target_height = target.winfo_height()
-        target_y = target.winfo_rooty()
-        move_above_target = abs((target_y - y) / target_height) < .5'''
 
         move_to = self.widgets.index(target)
         move_from = self.widgets.index(self.item)
@@ -866,10 +889,10 @@ class File_Arrangement_Region():
     height = 0
     owner = None
     widget_drag_controllers = []
+    owner_update_callback = None
 
-    def __init__(self, owner, root, width, height, row, column, rowspan = 1, columnspan = 1):
-        padding_x = 10
-        padding_y = 10
+    def __init__(self, owner, owner_update_callback, root, width, height, row, column, rowspan = 1, columnspan = 1):
+        self.owner_update_callback = owner_update_callback
         self.width = width
         self.height = height
         self.owner = owner
@@ -907,7 +930,7 @@ class File_Arrangement_Region():
             self.widget_drag_controllers.append(Widget_Drag_Controller(label, self.display_frame.winfo_children(), self.update_owner_data))
             
     def update_owner_data(self, files):
-        self.owner.change_files(files)
+        self.owner_update_callback(files)
 
 class Page(tk.Frame):
     button_frame = None
@@ -925,8 +948,6 @@ class Page_Main_Menu(Page):
         self.init_elements()
 
     def init_elements(self):
-        padding_x = 10
-        padding_y = 10
 
         about_text = '''
         Version: 0.2.1beta
@@ -951,61 +972,44 @@ class Page_Main_Menu(Page):
         file_text.config(state = 'disabled')
         file_text.grid(row=1, column=0, padx=padding_x, pady=padding_y)
 
-class Paradigm_Creation_Page(Page):
-    selected_files_info_text = None
-    files = []
-
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-
-class Page_Naming_Paradigm(Paradigm_Creation_Page):
+class Page_Naming_Paradigm(Page):
     file_arrangement_region = None
+    stimulus_option_selected = None
+    num_rows = 0
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
         self.init_elements()
 
     def init_elements(self):
-        padding_x = 10
-        padding_y = 10
-
         stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
         stimulus_text.insert(tk.INSERT, '\nSelect Stimulus Type')
         stimulus_text.tag_configure("center", justify='center')
         stimulus_text.tag_add("center", 1.0, "end")
         stimulus_text.config(state = 'disabled')
         stimulus_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        options = ['Video', 'Image']
-        default_option = options[0]
-        self.option_selected = tk.StringVar(self)
-        option_menu = tk.OptionMenu(self, self.option_selected, *options)
-        self.option_selected.set(default_option)
-        option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
-        option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+        stimulus_options = ['Video', 'Image']
+        stimulus_default_option = stimulus_options[0]
+        self.stimulus_option_selected = tk.StringVar(self)
+        stimulus_option_menu = tk.OptionMenu(self, self.stimulus_option_selected, *stimulus_options)
+        self.stimulus_option_selected.set(stimulus_default_option)
+        stimulus_option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
+        stimulus_option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        filestring = '''
-        Please Select the files to use for stimuli. These will be used during the experiment.
-        --For videos or images, select the video or image files from your computer.
-        '''
+        select_files_button = tk.Button(self, text ="Select Stimulus Files", command = self.load_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        select_files_button.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        select_text = tk.Text(self, font = default_font, height = 4, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_text.insert(tk.INSERT, filestring)
-        select_text.tag_configure("center", justify='center')
-        select_text.tag_add("center", 1.0, "end")
-        select_text.config(state = 'disabled')
-        select_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
-
-        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
-
-        self.file_arrangement_region = File_Arrangement_Region(self, self, width / 2, height / 1.5, 0, 1, 20)
+        self.file_arrangement_region = File_Arrangement_Region(self, self.change_files, self, width / 2, height / 1.5, 0, 1, 20)
         self.file_arrangement_region.set_elements(['Selected Files:'])
 
     def load_files(self):
-        logger.info('Page_Naming_Paradigm: load_files')
-        self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Files' + self.option_selected.get() + ' files')
-        display_strs = self.files#[os.path.basename(file_name) for file_name in self.files]
+        logger.info('Page_Naming_Paradigm: load_files: loading files')
+        self.files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Files' + self.stimulus_option_selected.get() + ' files')
+        display_strs = self.files
         self.file_arrangement_region.set_elements(display_strs)
 
     def change_files(self, files):
@@ -1014,63 +1018,110 @@ class Page_Naming_Paradigm(Paradigm_Creation_Page):
 
     def dict_data(self):
         data = {}
-        data['stimulus_type'] = self.option_selected.get()
-        data['file'] = self.files
+        data['paradigm'] = 'Naming'
+        data['stimulus_type'] = self.stimulus_option_selected.get()
+        data['stimulus_files'] = self.files
         return data
 
-class Page_Lexical_Priming(Paradigm_Creation_Page):
-    selected_files_info_text = None
+class Page_Lexical_Priming(Page):
+    stimulus_file_arrangement_region = None
+    primer_file_arrangement_region = None
+    stimulus_option_selected = None
+    primer_option_selected = None
+    stimulus_files = []
+    primer_files = []
+    num_rows = 0
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
         self.init_elements()
 
     def init_elements(self):
-        padding_x = 10
-        padding_y = 10
-
         stimulus_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
         stimulus_text.insert(tk.INSERT, '\nSelect Stimulus Type')
         stimulus_text.tag_configure("center", justify='center')
         stimulus_text.tag_add("center", 1.0, "end")
         stimulus_text.config(state = 'disabled')
         stimulus_text.grid(row=0, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        options = ['Video', 'Image']
-        default_option = options[0]
-        self.option_selected = tk.StringVar(self)
-        option_menu = tk.OptionMenu(self, self.option_selected, *options)
-        self.option_selected.set(default_option)
-        option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
-        option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+        stimulus_options = ['Video', 'Image']
+        stimulus_default_option = stimulus_options[0]
+        self.stimulus_option_selected = tk.StringVar(self)
+        stimulus_option_menu = tk.OptionMenu(self, self.stimulus_option_selected, *stimulus_options)
+        self.stimulus_option_selected.set(stimulus_default_option)
+        stimulus_option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
+        stimulus_option_menu.grid(row=1, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        filestring = '''
-        Please Select the files to use for stimuli. These will be used during the experiment.
-        --For videos or images, select the video or image files from your computer.
-        '''
+        primer_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        primer_text.insert(tk.INSERT, '\nSelect Primer Type')
+        primer_text.tag_configure("center", justify='center')
+        primer_text.tag_add("center", 1.0, "end")
+        primer_text.config(state = 'disabled')
+        primer_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        select_text = tk.Text(self, font = default_font, height = 4, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_text.insert(tk.INSERT, filestring)
-        select_text.tag_configure("center", justify='center')
-        select_text.tag_add("center", 1.0, "end")
-        select_text.config(state = 'disabled')
-        select_text.grid(row=2, column=0, padx=padding_x, pady=padding_y)
+        primer_options = ['Video', 'Image']
+        primer_default_option = primer_options[0]
+        self.primer_option_selected = tk.StringVar(self)
+        primer_option_menu = tk.OptionMenu(self, self.primer_option_selected, *primer_options)
+        self.primer_option_selected.set(primer_default_option)
+        primer_option_menu.config(background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'], height = 1, width = 30, font = default_font)
+        primer_option_menu.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        select_files_button = tk.Button(self, text ="Select files", command = self.load_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_files_button.grid(row=3, column=0, padx=padding_x, pady=padding_y)
+        stimulus_select_files_button = tk.Button(self, text ="Select Stimulus Files", command = self.load_stimulus_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        stimulus_select_files_button.grid(row=4, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
 
-        self.selected_files_info_text = tk.Text(self, font = default_font, height = 27, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        self.selected_files_info_text.insert(tk.INSERT, 'Files selected:\n')
-        self.selected_files_info_text.config(state = 'disabled')
-        self.selected_files_info_text.grid(row=0, column=1, rowspan = 20, padx=padding_x, pady=padding_y)
+        self.stimulus_file_arrangement_region = File_Arrangement_Region(self, self.change_stimulus_files, self, width / 4, height / 1.5, 0, 1, 20)
+        self.stimulus_file_arrangement_region.set_elements(['Selected Files:'])
 
-    def load_files(self):
-        pass
+        primer_select_files_button = tk.Button(self, text ="Select Primer Files", command = self.load_primer_files, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        primer_select_files_button.grid(row=5, column=0, padx=padding_x, pady=padding_y)
+        self.num_rows += 1
+
+        self.primer_file_arrangement_region = File_Arrangement_Region(self, self.change_primer_files, self, width / 4, height / 1.5, 0, 2, 20)
+        self.primer_file_arrangement_region.set_elements(['Selected Files:'])
+
+    def load_stimulus_files(self):
+        self.load_files(True)
+
+    def load_primer_files(self):
+        self.load_files(False)
+
+    def load_files(self, is_stimulus):
+        logger.info('Page_Lexical_Priming: load_files: loading files, is_stimulus=' + str(is_stimulus))
+        if is_stimulus:
+            self.stimulus_files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Stimulus Files' + self.stimulus_option_selected.get() + ' files')
+            self.stimulus_file_arrangement_region.set_elements(self.stimulus_files)
+        else:
+            self.primer_files = filedialog.askopenfilenames(parent=self, initialdir="/", title='Select Primer Files' + self.primer_option_selected.get() + ' files')
+            self.primer_file_arrangement_region.set_elements(self.primer_files)
+
+    def change_stimulus_files(self, files):
+        self.stimulus_files = files
+        self.stimulus_file_arrangement_region.set_elements(self.stimulus_files)
+
+    def change_primer_files(self, files):
+        self.primer_files = files
+        self.primer_file_arrangement_region.set_elements(self.primer_files)
 
     def dict_data(self):
+        primers = self.primer_option_selected.get()
+        stimuli = self.stimulus_files
+
+        if len(primers) != len(stimuli):
+            message = 'Cannot write file: There must be a 1:1 mapping of primers to stimuli'
+            logger.warning('Page_Lexical_Priming: dict_data: ' + message)
+            pop_up(message)
+            return []
+
         data = {}
-        data['stimulus_type'] = self.option_selected.get()
-        data['file'] = self.files
+        data['paradigm'] = 'Lexical_Priming'
+        data['files'] = [(primer, stimulus) for primer in primers for stimulus in stimuli]
+        data['stimulus_type'] = self.stimulus_option_selected.get()
         return data
 
 class Page_Create_Experiment(Page):
@@ -1081,6 +1132,7 @@ class Page_Create_Experiment(Page):
     selected_files_info_text = None
     page_naming_paradigm = None
     page_lexical_priming = None
+    create_experiment_button = None
 
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -1088,9 +1140,6 @@ class Page_Create_Experiment(Page):
         
     def init_elements(self):
         arrange_header_in(self)
-
-        padding_x = 10
-        padding_y = 10
 
         self.page_naming_paradigm = Page_Naming_Paradigm(self, background = settings_dict['backcolor'])
         self.page_lexical_priming = Page_Lexical_Priming(self, background = settings_dict['backcolor'])
@@ -1125,11 +1174,12 @@ class Page_Create_Experiment(Page):
         elif paradigm_option_string == 'Lexcial Priming':
             self.page_lexical_priming.show()
 
-        select_files_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
-        select_files_button.grid(row=8, column=0, padx=padding_x, pady=padding_y)
+        #Create Experiment Button
+        self.create_experiment_button = tk.Button(self, text ="Create Experiment", command = self.create_experiment, font = default_font, height = 1, width = 30, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
+        self.create_experiment_button.grid(row = 1, column = 1, padx = padding_x, pady = padding_y)
 
     def create_experiment(self):
-        logger.info('Page_Create_Experiment: create_experiment')
+        logger.info('Page_Create_Experiment: create_experiment: creating experiment')
 
         paradigm_option_string = self.paradigm_option_selected.get()
         exp_data = None
@@ -1148,7 +1198,7 @@ class Page_Create_Experiment(Page):
                 print(json.dumps(data), file=experiment)
         except Exception as err:
             message = 'Error: Could not write experiment file'
-            logger.error(message + ': ' + str(err))
+            logger.error('Page_Create_Experiment: create_experiment: ' + message + ': ' + str(err))
             pop_up(message)
 
     def paradigm_selected(self, name, index, mode):
@@ -1171,9 +1221,6 @@ class Page_Start_Experiment(Page):
         global subject_id_entry_box
 
         arrange_header_in(self)
-
-        padding_x = 10
-        padding_y = 10
 
         file_text = tk.Text(self, font = default_font, height = 3, width = 70, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
         file_text.insert(tk.INSERT, '\nSelect an experiment file to load')
@@ -1221,26 +1268,28 @@ class Page_Start_Experiment(Page):
 
     def load_dir(self):
         global out_dir
-        logger.info('Page_Start_Experiment: load_dir')
+        logger.info('Page_Start_Experiment: load_dir: loading save folder')
         try:
             out_dir = filedialog.askdirectory(parent = self, initialdir="/", title='Select Save Folder')
         except Exception as err:
             message = 'Could not load the selected directory'
-            logger.error(message + ': ' + str(err))
+            logger.error('Page_Start_Experiment: load_dir: ' + message + ': ' + str(err))
             pop_up(message)
 
     def load_experiment(self):
         global experiment
-        logger.info('Page_Start_Experiment: load_experiment')
+        logger.info('Page_Start_Experiment: load_experiment: loading experiment')
         experiment_file = filedialog.askopenfilename(parent=self, initialdir="/", title='Select Experiment')
         try:
             with open(experiment_file, 'r') as experiment_data:
                 data = json.loads(experiment_data.read())
                 if data['paradigm'] == 'Naming':
                     experiment = Naming_Experiment(data)
+                elif data['paradigm'] == 'Lexical Priming':
+                    pass
         except Exception as err:
             message = 'Could not load experiment file'
-            logger.error(message + ': ' + str(err))
+            logger.error('Page_Start_Experiment: load_experiment:' + message + ': ' + str(err))
             pop_up(message)
 
 class Page_Show_Stimuli(Page):
@@ -1316,6 +1365,7 @@ class MainFrame(tk.Frame):
 
     def set_fullscreen_exclusive(self, fullscreen_exclusive):
         window.attributes('-fullscreen', fullscreen_exclusive)
+
 
 '''
 This code starts program execition. The entire program is run in a try-except statement so that, should any error occur:

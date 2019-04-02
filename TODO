@@ -3,14 +3,10 @@ TODO
 
 Important
     waitKey stuff
+    Improve UI so that files can be added or removed easily (use a container in the File_Arrangement_Region)
 
 Long-term / potential
-    Make a mac .sh / dbl click thing
     option for randomize in create exp. (later)
-    Allow merging of videos
-    Config file recovery if deleted
-    Allow search for more webcams after Start
-    Official installer
 
 Timing
     Not sure when I will have v0.2stable
@@ -18,14 +14,6 @@ Timing
 Meeting--3-20-19
     lexical task
         do time recordings
-    new
-        show first a pic or sign (lexical priming)
-        then show them a next stim.
-        must know which 2 go together
-            drag and drop
+    Lexical Priming Exp.
     new2
         4 pics and vid in middle
-
-199
-    time in lab
-    tasks., projs

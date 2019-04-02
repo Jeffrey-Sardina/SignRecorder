@@ -1,5 +1,6 @@
-INFO - 2019-03-30 20:55:04,820 - Starting log
-INFO - 2019-03-30 20:55:04,921 - Page_Create_Experiment: paradigm_selected: paradigm_option_string=Naming
-INFO - 2019-03-30 20:55:04,925 - KeyTracker.track: key=space
-INFO - 2019-03-30 20:55:06,611 - Page_Naming_Paradigm: load_files
-INFO - 2019-03-30 20:55:16,578 - on_close: Cleaning resources and closing
+INFO - 2019-04-01 22:30:09,852 - init_logging: Starting log
+INFO - 2019-04-01 22:30:09,853 - load_config:
+INFO - 2019-04-01 22:30:09,853 - init_gui:
+INFO - 2019-04-01 22:30:09,964 - Page_Create_Experiment: paradigm_selected: paradigm_option_string=Naming
+INFO - 2019-04-01 22:30:09,971 - KeyTracker: track: key=space
+INFO - 2019-04-01 22:30:11,341 - on_close: Cleaning resources and closing
