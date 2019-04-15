@@ -419,10 +419,12 @@ class Lexical_Priming_Experiment(Experiment):
     keep_displaying = True
     current_round = 0
     can_start_recording = True
+    display_primer = True
     
     #Timing
     display_timer = None
     recording_timer = None
+    primer_timer = None
 
     def __init__(self, data):
         '''
@@ -444,6 +446,7 @@ class Lexical_Priming_Experiment(Experiment):
         self.primer_time = data['primer_time'] if self.primer_type == 'Image' else 0
         self.display_timer = Timer()
         self.recording_timer = Timer()
+        self.prim_timers = Timer()
 
     def on_input_press(self, input_key):
         '''
@@ -453,17 +456,20 @@ class Lexical_Priming_Experiment(Experiment):
 
         If there are no more stimuli to run, the program displays a pop-up message stating that data collection is complete.
         '''
-
-        logger.info('Lexical_Priming_Experiment: on_input_press: current_stimulus=' + str(self.current_round) + ' recording=' + str(self.recording))
-        self.recording = False
-        if self.recording_timer.active():
-            self.recording_timer.end()
-        if self.current_round >= len(self.stimuli_tuples):
-            main_frame.select_start_experiment()
-            pop_up('All data for ' + self.subject_id + ' has been collected')
-            self.reset_for_next_subject()
+        logger.info('Lexical_Priming_Experiment: on_input_press: current_stimulus=' + str(self.current_round) + ' recording=' + str(self.recording) + ', display_primer=' + self.display_primer)
+        if display_primer:
+            pass
         else:
-            self.load_primer()
+            
+            self.recording = False
+            if self.recording_timer.active():
+                self.recording_timer.end()
+            if self.current_round >= len(self.stimuli_tuples):
+                main_frame.select_start_experiment()
+                pop_up('All data for ' + self.subject_id + ' has been collected')
+                self.reset_for_next_subject()
+            else:
+                self.load_primer()
 
     def on_input_release(self, input_key):
         '''
@@ -471,24 +477,28 @@ class Lexical_Priming_Experiment(Experiment):
         the recording timer. It also updates program state tracking variables to refect the current state of the progam.
         '''
 
-        if self.subject_id == None:
-            self.subject_id = subject_id_entry_box.get().strip()
-        if self.can_start_recording and self.current_round < len(self.stimuli_tuples):
-            logger.info('Lexical_Priming_Experiment: on_input_release: current_round=' + str(self.current_round) + '; recording starting')
-            self.last_video_id = self.video_id
-            self.video_id = os.path.basename(self.stimuli_tuples[self.current_round][0].strip()) + '-' + os.path.basename(self.stimuli_tuples[self.current_round][1].strip())
-            self.recording = True
-            self.keep_displaying = False
-            self.recording_timer.begin()
-            self.current_round += 1
-            recorder = Recorder(self.subject_id + '-' + self.video_id, True)
-            recorder.begin()
+        if self.display_primer:
+            self.display_primer = False
+            #code here
         else:
-            logger.warning('Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded')
+            if self.subject_id == None:
+                self.subject_id = subject_id_entry_box.get().strip()
+            if self.can_start_recording and self.current_round < len(self.stimuli_tuples):
+                logger.info('Lexical_Priming_Experiment: on_input_release: current_round=' + str(self.current_round) + '; recording starting')
+                self.last_video_id = self.video_id
+                self.video_id = os.path.basename(self.stimuli_tuples[self.current_round][0].strip()) + '-' + os.path.basename(self.stimuli_tuples[self.current_round][1].strip())
+                self.recording = True
+                self.keep_displaying = False
+                self.recording_timer.begin()
+                self.current_round += 1
+                recorder = Recorder(self.subject_id + '-' + self.video_id, True)
+                recorder.begin()
+            else:
+                logger.warning('Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded')
 
-    def load_primer(self):
+    def load_primer(self): #WHat about stimuli?
         '''
-        Loads and displays the next stimulis for the current subject, but should not be used for the first stimulus of a subjecct.
+        Loads and displays the next stimulus for the current subject, but should not be used for the first stimulus of a subjecct.
         It resets the display timer, which measures the time that a stimulus is displayed before signing.
 
         Later, it will also write timer output to a meta file with the same name as the output file. Timer data it not yet verified
@@ -925,9 +935,19 @@ class File_Arrangement_Region():
         #Add new elements
         for i in range(len(files)):
             highlight = settings_dict['draggable_color' + str(i % 2)]
-            tk.Label(self.display_frame, text=files[i], font = default_font, anchor = 'w', background = highlight).pack(side = 'top', fill = 'x')
+
+            container = tk.Frame(width = width, height = int(height / 1.25), background = highlight)
+            label = tk.Label(self.display_frame, text=files[i], font = default_font, anchor = 'w', background = highlight)
+            remove_button = tk.Button(text ="-", command = self.on_button_remove, font = default_font, height = 1, width = 3, background = highlight, foreground = settings_dict['forecolor'])
+            label.pack(side = 'left')
+            remove_button.pack(side = 'right')
+            container.pack(side = 'top', fill = 'x')
+            #tk.Label(self.display_frame, text=files[i], font = default_font, anchor = 'w', background = highlight).pack(side = 'top', fill = 'x')
         for label in self.display_frame.winfo_children():
             self.widget_drag_controllers.append(Widget_Drag_Controller(label, self.display_frame.winfo_children(), self.update_owner_data))
+    
+    def on_button_remove(self):
+        pass
             
     def update_owner_data(self, files):
         self.owner_update_callback(files)
