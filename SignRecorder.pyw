@@ -210,7 +210,7 @@ def pop_up(message):
     select_files_button = tk.Button(pop_up_window, text ="Close", command = pop_up_window.destroy, font = default_font, height = 3, width = 10, background = settings_dict['ui_element_color'], foreground = settings_dict['forecolor'])
     select_files_button.grid(row=1, column=0)
 
-def write_out(path, name, message):
+def write_out(name, message):
     '''
     Writes out a meta-file that contains metadata about the recorded video. The data is:
         stimulus_name: the name of the file used as a stimulus for this recording
@@ -219,8 +219,8 @@ def write_out(path, name, message):
         total_time: the total time for this step of the experiment, = display_time + recording_time
     '''
 
-    logger.info('write_out: writing meta file at path=' + path + ' with name=' + name)
-    file_name = os.path.join(path, name + '.meta.csv')
+    logger.info('write_out: writing meta file at path=' + out_dir + ' with name=' + name)
+    file_name = os.path.join(out_dir, name + '.meta.csv')
     try:
         if os.path.exists(file_name):
             message = 'Cannot overwrite existing meta file: '
@@ -300,6 +300,7 @@ class Naming_Experiment(Experiment):
     keep_displaying = True
     current_stimulus = 0
     can_start_recording = True
+    data = ''
     
     #Timing
     display_timer = None
@@ -323,7 +324,7 @@ class Naming_Experiment(Experiment):
 
     def on_input_press(self, input_key):
         '''
-        This method should be called every time space is pressed (if that press has been authenticated), except the first. It proceeds
+        This method should be called every time space is pressed (if that space-press has been authenticated). It proceeds
         to the next stimulus and will begin recording, ending the current stimulus and recording. It also ends the recording_timer if 
         it was running, and updates program state tracking variables to refect the current state of the progam.
 
@@ -334,8 +335,10 @@ class Naming_Experiment(Experiment):
         self.recording = False
         if self.recording_timer.active():
             self.recording_timer.end()
+            self.data += str(self.current_stimulus) + '_' + '_recordingTime,' + str(self.recording_timer.timespan) + '\n'
         if self.current_stimulus >= len(self.stimuli):
             message = 'All data for ' + str(self.subject_id) + ' has been collected'
+            write_out(self.subject_id + '_timing.csv', self.data)
             pop_up(message)
             logger.info('Naming_Experiment: on_input_press: ' + message)
             main_frame.select_start_experiment()
@@ -380,6 +383,7 @@ class Naming_Experiment(Experiment):
         stimulus = self.stimuli[self.current_stimulus].strip()
         if self.display_timer.active():
             self.display_timer.end()
+            self.data += str(self.current_stimulus) + '_' + '_displayTime,' + str(self.display_timer.timespan) + '\n'
         if self.stimulus_type == 'Image':
             self.display_timer.begin()
             Image_Displayer(stimulus).begin()
@@ -457,7 +461,7 @@ class Lexical_Priming_Experiment(Experiment):
         If there are no more stimuli to run, the program displays a pop-up message stating that data collection is complete.
         '''
         logger.info('Lexical_Priming_Experiment: on_input_press: current_stimulus=' + str(self.current_round) + ' recording=' + str(self.recording) + ', display_primer=' + self.display_primer)
-        if display_primer:
+        if self.display_primer:
             pass
         else:
             
@@ -859,21 +863,27 @@ class Widget_Drag_Controller():
         self.item = item
         self.widgets = widgets
         self.callback = callback
+
+        #Bind clicks on the item itself
         self.item.bind("<ButtonPress-1>", self.on_start)
         self.item.bind("<B1-Motion>", self.on_move)
         self.item.bind("<ButtonRelease-1>", self.on_end)
+
         self.item.configure(cursor="hand1")
 
     def on_start(self, event):
+        print('on_start')
         self.last_seen = self.item
         self.move_frame = tk.Frame()
         tk.Label(self.move_frame, text = self.item.cget('text'), font = self.item.cget('font'), anchor = self.item.cget('anchor'), background = self.item.cget('background')).pack(side = 'top', fill = 'x')
 
     def on_move(self, event):
+        print('on_move')
         x, y = event.widget.winfo_pointerxy()
         self.move_frame.place(x = x, y = int(y - (self.item.winfo_height() + self.item.winfo_height() / 2)))
 
     def on_end(self, event):
+        print('on_end')
         self.move_frame.destroy()
         x, y = event.widget.winfo_pointerxy()
         target = event.widget.winfo_containing(x, y)
@@ -932,19 +942,31 @@ class File_Arrangement_Region():
         for child in self.display_frame.winfo_children():
             child.destroy()
 
-        #Add new elements
+        #Add new elements (OLD)
         for i in range(len(files)):
             highlight = settings_dict['draggable_color' + str(i % 2)]
-
-            container = tk.Frame(width = width, height = int(height / 1.25), background = highlight)
-            label = tk.Label(self.display_frame, text=files[i], font = default_font, anchor = 'w', background = highlight)
-            remove_button = tk.Button(text ="-", command = self.on_button_remove, font = default_font, height = 1, width = 3, background = highlight, foreground = settings_dict['forecolor'])
-            label.pack(side = 'left')
-            remove_button.pack(side = 'right')
-            container.pack(side = 'top', fill = 'x')
-            #tk.Label(self.display_frame, text=files[i], font = default_font, anchor = 'w', background = highlight).pack(side = 'top', fill = 'x')
+            tk.Label(self.display_frame, text=files[i], font = default_font, anchor = 'w', background = highlight).pack(side = 'top', fill = 'x')
         for label in self.display_frame.winfo_children():
+            print(label);
             self.widget_drag_controllers.append(Widget_Drag_Controller(label, self.display_frame.winfo_children(), self.update_owner_data))
+
+        '''#Add new elements
+        for i in range(len(files)):
+            highlight = settings_dict['draggable_color' + str(i % 2)]
+            container = tk.Frame(self.display_frame, width = width, height = int(height / 1.25), background = highlight)
+
+            label = tk.Label(container, text=files[i], font = default_font, anchor = 'w', background = highlight)
+            label.pack(side = 'left')
+
+            remove_button = tk.Button(container, text ="-", command = self.on_button_remove, font = default_font, height = 1, width = 3, background = highlight, foreground = settings_dict['forecolor'])
+            remove_button.pack(side = 'right')
+            
+            label.bindtags(("draggable",) + label.bindtags())
+
+            container.pack(side = 'top', fill = 'x')
+        for element in self.display_frame.winfo_children():
+            print(element);
+            self.widget_drag_controllers.append(Widget_Drag_Controller(element, self.display_frame.winfo_children(), self.update_owner_data))'''
     
     def on_button_remove(self):
         pass
@@ -960,6 +982,8 @@ class Page(tk.Frame):
         self.button_frame = tk.Frame(self, background = settings_dict['backcolor'])
 
     def show(self):
+        print('Show')
+        print(self)
         self.lift()
 
 class Page_Main_Menu(Page):
@@ -1226,11 +1250,13 @@ class Page_Create_Experiment(Page):
         logger.info('Page_Create_Experiment: paradigm_selected: paradigm_option_string=' + paradigm_option_string)
         
         if paradigm_option_string == 'Naming':
-            self.page_naming_paradigm.lift()
-            self.page_lexical_priming.lower()
+            pass
+            #self.page_naming_paradigm.lift()
+            #self.page_lexical_priming.lower()
         elif paradigm_option_string == 'Lexcial Priming':
-            self.page_lexical_priming.lift()
-            self.page_naming_paradigm.lower()
+            pass
+            #self.page_lexical_priming.lift()
+            #self.page_naming_paradigm.lower()
 
 class Page_Start_Experiment(Page):
     def __init__(self, *args, **kwargs):
@@ -1332,7 +1358,7 @@ class MainFrame(tk.Frame):
 
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
-        self.buttonframe = tk.Frame(main_frame, background = settings_dict['backcolor'])
+        #self.buttonframe = tk.Frame(main_frame, background = settings_dict['backcolor'])
         self.config(background = settings_dict['backcolor'])
 
     def prepare_display(self):

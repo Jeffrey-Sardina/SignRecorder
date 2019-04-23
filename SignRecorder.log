@@ -1,6 +1,77 @@
-INFO - 2019-04-03 08:00:14,536 - init_logging: Starting log
-INFO - 2019-04-03 08:00:14,536 - load_config:
-INFO - 2019-04-03 08:00:14,536 - init_gui:
-INFO - 2019-04-03 08:00:14,632 - Page_Create_Experiment: paradigm_selected: paradigm_option_string=Naming
-INFO - 2019-04-03 08:00:14,640 - KeyTracker: track: key=space
-INFO - 2019-04-03 08:00:17,660 - on_close: Cleaning resources and closing
+INFO - 2019-04-22 17:25:14,286 - init_logging: Starting log
+INFO - 2019-04-22 17:25:14,287 - load_config:
+INFO - 2019-04-22 17:25:14,287 - init_gui:
+INFO - 2019-04-22 17:25:14,407 - Page_Create_Experiment: paradigm_selected: paradigm_option_string=Naming
+INFO - 2019-04-22 17:25:14,418 - KeyTracker: track: key=space
+INFO - 2019-04-22 17:25:17,586 - Page_Create_Experiment: paradigm_selected: paradigm_option_string=Naming
+INFO - 2019-04-22 17:25:18,218 - Page_Naming_Paradigm: load_files: loading files
+INFO - 2019-04-22 17:25:32,640 - Page_Create_Experiment: create_experiment: creating experiment
+INFO - 2019-04-22 17:25:38,788 - Page_Start_Experiment: load_experiment: loading experiment
+INFO - 2019-04-22 17:25:43,158 - Page_Start_Experiment: load_dir: loading save folder
+INFO - 2019-04-22 17:25:55,597 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:25:55,597 - Naming_Experiment: on_input_press: current_stimulus=0 recording=False
+INFO - 2019-04-22 17:25:55,597 - Naming_Experiment: load_stimulus: current_stimulus=0 stimulus type=Video
+INFO - 2019-04-22 17:25:55,597 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_54_51.mp4
+INFO - 2019-04-22 17:25:55,667 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_54_51.mp4 running at fps=30
+INFO - 2019-04-22 17:26:23,404 - Video_Displayer: run_frame: display ended naturally
+INFO - 2019-04-22 17:26:24,836 - KeyTracker: report_key_release_callback: key=space, is released= True
+INFO - 2019-04-22 17:26:24,836 - Naming_Experiment: on_input_release: current_stimulus=0; recording starting
+INFO - 2019-04-22 17:26:24,836 - Recorder: __init__: name= mirror=True
+INFO - 2019-04-22 17:26:25,750 - Recorder: begin: starting recording loop
+INFO - 2019-04-22 17:26:41,344 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:26:41,344 - Naming_Experiment: on_input_press: current_stimulus=1 recording=True
+INFO - 2019-04-22 17:26:41,344 - Naming_Experiment: load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-04-22 17:26:41,345 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-04-22 17:26:41,376 - Recorder: end: recording ended, releasing resources
+INFO - 2019-04-22 17:26:41,400 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-04-22 17:27:04,317 - KeyTracker: report_key_release_callback: key=space, is released= True
+WARNING - 2019-04-22 17:27:04,317 - Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-04-22 17:27:08,152 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:27:08,152 - Naming_Experiment: on_input_press: current_stimulus=1 recording=False
+INFO - 2019-04-22 17:27:08,152 - Naming_Experiment: load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-04-22 17:27:08,152 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-04-22 17:27:08,204 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-04-22 17:27:10,773 - KeyTracker: report_key_release_callback: key=space, is released= True
+WARNING - 2019-04-22 17:27:10,773 - Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-04-22 17:27:11,089 - Video_Displayer: run_frame: display ended naturally
+INFO - 2019-04-22 17:27:14,176 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:27:14,176 - Naming_Experiment: on_input_press: current_stimulus=1 recording=False
+INFO - 2019-04-22 17:27:14,176 - Naming_Experiment: load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-04-22 17:27:14,176 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-04-22 17:27:14,229 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-04-22 17:27:14,444 - KeyTracker: report_key_release_callback: key=space, is released= True
+WARNING - 2019-04-22 17:27:14,444 - Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-04-22 17:27:15,538 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:27:15,545 - Naming_Experiment: on_input_press: current_stimulus=1 recording=False
+INFO - 2019-04-22 17:27:15,546 - Naming_Experiment: load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-04-22 17:27:15,546 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-04-22 17:27:15,599 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-04-22 17:27:17,468 - KeyTracker: report_key_release_callback: key=space, is released= True
+WARNING - 2019-04-22 17:27:17,468 - Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-04-22 17:27:20,369 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:27:20,369 - Naming_Experiment: on_input_press: current_stimulus=1 recording=False
+INFO - 2019-04-22 17:27:20,369 - Naming_Experiment: load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-04-22 17:27:20,369 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-04-22 17:27:20,425 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-04-22 17:27:21,344 - KeyTracker: report_key_release_callback: key=space, is released= True
+WARNING - 2019-04-22 17:27:21,344 - Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-04-22 17:27:21,587 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:27:21,587 - Naming_Experiment: on_input_press: current_stimulus=1 recording=False
+INFO - 2019-04-22 17:27:21,587 - Naming_Experiment: load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-04-22 17:27:21,587 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-04-22 17:27:21,641 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-04-22 17:27:22,111 - KeyTracker: report_key_release_callback: key=space, is released= True
+WARNING - 2019-04-22 17:27:22,111 - Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-04-22 17:27:22,435 - KeyTracker: report_key_press: valid keypress detected: key=space
+INFO - 2019-04-22 17:27:22,435 - Naming_Experiment: on_input_press: current_stimulus=1 recording=False
+INFO - 2019-04-22 17:27:22,435 - Naming_Experiment: load_stimulus: current_stimulus=1 stimulus type=Video
+INFO - 2019-04-22 17:27:22,435 - Video_Displayer: __init__: file_name=C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4
+INFO - 2019-04-22 17:27:22,487 - Video_Displayer: begin: C:/Users/jeffr/Pictures/Sign Recorder/Microsoft Edge 05_02_2019 23_55_14.mp4 running at fps=30
+INFO - 2019-04-22 17:27:23,459 - KeyTracker: report_key_release_callback: key=space, is released= True
+WARNING - 2019-04-22 17:27:23,459 - Naming_Experiment: on_input_release: can_start_recording is False, video must end before the signer may be recorded
+INFO - 2019-04-22 17:28:55,463 - Video_Displayer: run_frame: display ended naturally
+INFO - 2019-04-22 17:29:14,754 - Video_Displayer: run_frame: display ended naturally
+INFO - 2019-04-22 17:29:17,132 - Video_Displayer: run_frame: display ended naturally
+INFO - 2019-04-22 17:29:21,889 - Video_Displayer: run_frame: display ended naturally
+INFO - 2019-04-22 17:29:22,413 - Video_Displayer: run_frame: display ended naturally
+INFO - 2019-04-22 17:29:22,554 - Video_Displayer: run_frame: display ended naturally
